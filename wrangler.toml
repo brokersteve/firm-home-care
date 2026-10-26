@@ -1,0 +1,27 @@
+name = "firm-home-care"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+# Nightly Rentec sync at 07:00 UTC, then reminders go out.
+[triggers]
+crons = ["0 7 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "firm-home-care"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+[vars]
+APP_URL = "https://firm-home-care.example.workers.dev"
+RENTEC_BASE_URL = "https://secure.rentecdirect.com/api/v3"
+EMAIL_FROM = "F.I.R.M. Home Care <homecare@example.com>"
+EMERGENCY_PHONE = "000-000-0000"
+RESIDENT_CONNECT_URL = "https://secure.rentecdirect.com/tenants/"
+# Comma-separated Rentec property IDs in the pilot. Empty = all properties.
+PILOT_PROPERTY_IDS = ""
+
+# Secrets (set with `wrangler secret put NAME`, never committed):
+#   RENTEC_API_KEY   the "FIRM Home Care" key from Rentec
+#   RESEND_API_KEY   email sending
+#   LINK_SECRET      random string used to sign tenant links
+#   ADMIN_TOKEN      password for the /admin page

@@ -1,0 +1,6 @@
+RENTEC_API_KEY=dev-key
+RESEND_API_KEY=log
+LINK_SECRET=dev-link-secret
+ADMIN_TOKEN=dev-admin
+RENTEC_BASE_URL=http://localhost:8788/api/v3
+APP_URL=http://localhost:8787

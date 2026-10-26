@@ -1,0 +1,26 @@
+{
+  "name": "firm-home-care",
+  "version": "1.0.0",
+  "description": "F.I.R.M. Home Care: tenant home-care reminders and troubleshooting guides, synced from Rentec Direct",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "wrangler d1 migrations apply firm-home-care"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "hono": "^4.13.14"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261026.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.153.0"
+  },
+  "private": true,
+  "type": "module"
+}

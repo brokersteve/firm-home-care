@@ -1,0 +1,57 @@
+import { html } from "hono/html";
+import type { Env } from "./env";
+import { layout } from "./pages";
+import { listProperties } from "./store";
+
+/** The custom fields every pilot property should have filled in. */
+export const REQUIRED_FIELDS = [
+  "HC Filter Size",
+  "HC Filter Months",
+  "HC Filter Location",
+  "HC Smoke Detectors",
+  "HC Detector Battery",
+  "HC Breaker Panel",
+  "HC Water Shutoff",
+  "HC Trash Day",
+];
+
+export async function adminPage(env: Env, token: string) {
+  const properties = await listProperties(env);
+  const tenants = await env.DB.prepare(
+    "SELECT property_id, COUNT(*) AS n, SUM(email IS NULL) AS no_email FROM tenants WHERE active = 1 GROUP BY property_id",
+  ).all<{ property_id: string; n: number; no_email: number }>();
+  const byProperty = new Map(tenants.results.map((r) => [r.property_id, r]));
+  const lastSync = await env.DB.prepare("SELECT * FROM sync_runs ORDER BY id DESC LIMIT 1").first<{
+    started_at: string;
+    properties: number | null;
+    tenants: number | null;
+    error: string | null;
+  }>();
+  const reminders = await env.DB.prepare(
+    "SELECT kind, COUNT(*) AS sent, COUNT(done_at) AS done FROM reminders_sent GROUP BY kind ORDER BY kind",
+  ).all<{ kind: string; sent: number; done: number }>();
+  const outcomes = await env.DB.prepare(
+    "SELECT guide_id, SUM(outcome = 'fixed') AS fixed, SUM(outcome = 'work_order') AS work_orders FROM guide_outcomes GROUP BY guide_id ORDER BY guide_id",
+  ).all<{ guide_id: string; fixed: number; work_orders: number }>();
+
+  return layout(
+    "Admin",
+    html`<h1>Home Care admin</h1>
+<div class="card"><h2>Last Rentec sync</h2>
+${lastSync
+  ? html`<p>${lastSync.started_at.slice(0, 16).replace("T", " ")} UTC: ${lastSync.properties ?? 0} properties, ${lastSync.tenants ?? 0} tenants
+${lastSync.error ? html`<br><strong>Error:</strong> ${lastSync.error}` : ""}</p>`
+  : html`<p class="quiet">Never run.</p>`}
+<form method="post" action="/admin/run?token=${token}"><button class="btn">Sync and send due reminders now</button></form></div>
+<div class="card"><h2>Pilot properties</h2><table><tr><th>Property</th><th>Tenants</th><th>Missing fields</th></tr>
+${properties.map((p) => {
+  const t = byProperty.get(p.id);
+  const missing = REQUIRED_FIELDS.filter((f) => !p.fields[f]);
+  return html`<tr><td>${p.name}</td><td>${t?.n ?? 0}${t?.no_email ? html` (${t.no_email} without email)` : ""}</td><td>${missing.length ? missing.join(", ") : "None"}</td></tr>`;
+})}</table></div>
+<div class="card"><h2>Reminders</h2><table><tr><th>Reminder</th><th>Sent</th><th>Done</th></tr>
+${reminders.results.map((r) => html`<tr><td>${r.kind}</td><td>${r.sent}</td><td>${r.done}</td></tr>`)}</table></div>
+<div class="card"><h2>Troubleshooting</h2><table><tr><th>Guide</th><th>Fixed by tenant</th><th>Work orders</th></tr>
+${outcomes.results.map((r) => html`<tr><td>${r.guide_id}</td><td>${r.fixed}</td><td>${r.work_orders}</td></tr>`)}</table></div>`,
+  );
+}
