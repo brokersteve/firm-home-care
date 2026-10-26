@@ -168,6 +168,7 @@ app.post("/t/:id/:sig/report/:guide", async (c) => {
     ...(text("where") ? [`Where: ${text("where")}`] : []),
     ...(visitTimes.length ? [`Best times: ${visitTimes.join("; ")}`] : []),
     `Pets in the home: ${body["pets"] === "yes" ? "yes" : "no"}`,
+    ...(body["adult_present"] === "1" ? ["Tenant confirmed they or an authorized adult 18+ will be home for the visit."] : []),
     ...(ctx.guide?.drainLine && body["drain_ack"] === "1"
       ? ["Tenant acknowledged clearing a slow or clogged drain is their cost unless the line is collapsed or damaged through no fault of theirs."]
       : []),

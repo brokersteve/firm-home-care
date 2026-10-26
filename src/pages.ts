@@ -25,6 +25,8 @@ dl{margin:0}dt{color:var(--quiet);font-size:14px;margin-top:8px}dd{margin:0}
 input[type=search],input[type=text],input[type=tel],input[type=email],textarea,select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);font:inherit;background:var(--card);color:var(--ink)}
 textarea{min-height:96px}label{display:block;font-weight:600;margin:14px 0 6px}label small{font-weight:400;color:var(--quiet)}
 input[type=file]{width:100%;padding:8px 0}
+.pick input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}.pick label.btn{position:relative;margin:8px 0}
+.pick .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.thumbs{display:flex;flex-wrap:wrap;gap:6px}.thumbs img{width:64px;height:64px;object-fit:cover;border-radius:8px}
 ol,ul{padding-left:20px}li{margin:6px 0}.quiet{color:var(--quiet);font-size:14px}
 .ac{position:relative}.ac ul{position:absolute;z-index:2;left:0;right:0;margin:4px 0 0;padding:4px;list-style:none;background:var(--card);
   border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 18px rgb(0 0 0 / .12)}
@@ -149,6 +151,7 @@ ${tenant.move_in && daysBetween(tenant.move_in, formatDay(new Date())) <= 30
 <li>Replace air filters at least every 60 days, and detector batteries as needed.</li>
 <li>Report leaks, mold, or heating, plumbing or appliance problems within 24 hours.</li>
 <li>Slow or clogged drains are yours to clear, unless the line is collapsed or damaged through no fault of yours.</li>
+<li>You or an adult 18 or older you authorize must be home for any repair visit. We don't enter without someone there unless it's an emergency.</li>
 <li>In freezing weather keep the heat at 55°F or higher, even when away.</li>
 <li>Away more than 7 days? Tell us in writing first.</li>
 <li>Contact us through the tenant portal or email; phone or text only when it's urgent.</li>
@@ -240,11 +243,9 @@ ${guide?.drainLine
 <textarea id="what" name="what" required placeholder="e.g. The disposal hums but won't spin, even after the reset button.">${guide ? `${guide.title}. ` : ""}</textarea>
 <label for="where">Where in the home? <small>e.g. kitchen sink, upstairs hall bathroom</small></label>
 <input type="text" id="where" name="where">
-<label for="photos">Photos of the problem <small>${guide ? `Take a photo of ${guide.photoHint}.` : "A photo or two helps us bring the right parts."} Up to 5.</small></label>
-<input type="file" id="photos" name="photos" accept="image/*" multiple>
+${photoPicker("photos", "Photos of the problem", `${guide ? `Take a photo of ${guide.photoHint}.` : "A photo or two helps us bring the right parts."} Up to 5.`, 5)}
 ${guide?.appliance
-  ? html`<label for="tag">Photo of the model and serial tag <small>Only if it's easy to see: often inside the door, on the side or behind a front panel. Please don't move the appliance.</small></label>
-<input type="file" id="tag" name="tag" accept="image/*">`
+  ? photoPicker("tag", "Photo of the model and serial tag", "Only if it's easy to see: often inside the door, on the side or behind a front panel. Please don't move the appliance.", 1)
   : ""}
 <fieldset style="border:0;padding:0;margin:0"><legend><strong>Best times for a visit</strong> <small>Visits are on weekdays during business hours (8am to 5pm). Pick any that work.</small></legend>
 ${VISIT_TIMES.map((t) => html`<label><input type="checkbox" name="when" value="${t}"> ${t}</label>`)}</fieldset>
@@ -253,12 +254,48 @@ ${VISIT_TIMES.map((t) => html`<label><input type="checkbox" name="when" value="$
 <input type="tel" id="phone" name="phone" required autocomplete="tel" inputmode="tel" pattern="[^0-9]*([0-9][^0-9]*){10,11}" value="${tenant.phone ?? ""}" placeholder="704-555-0100">
 <label for="email">Your email</label>
 <input type="email" id="email" name="email" required autocomplete="email" value="${tenant.email ?? ""}">
-<p class="quiet">An adult 18 or older must be home for the visit (lease 6.5). If an appointment is missed, the technician can't get in, or the problem turns out to be the tenant's responsibility, the service call (up to $75) may be charged to you.</p>
+<label><input type="checkbox" name="adult_present" value="1" required> I or another adult 18 or older that I authorize will be home for the visit. I understand F.I.R.M. won't enter without someone there unless it's an emergency.</label>
+<p class="quiet">If an appointment is missed, the technician can't get in, or the problem turns out to be the tenant's responsibility, the service call (up to $75) may be charged to you (lease 6.5).</p>
 <button class="btn primary">Submit work order</button></form>
 <p class="quiet">Emergency? Call ${env.EMERGENCY_PHONE}.</p>`,
-    SHRINK_PHOTOS_SCRIPT,
+    PHOTO_PICKER_SCRIPT + SHRINK_PHOTOS_SCRIPT,
   );
 }
+
+/**
+ * Photo buttons: "Take a photo" opens the camera on a phone; "Choose photos" opens the library. Each camera shot
+ * gets its own input (the next one is added after a shot), so several can be taken. All share the field name.
+ */
+function photoPicker(name: string, title: string, hint: string, max: number): Html {
+  return html`<div class="pick" data-max="${max}"><p style="font-weight:600;margin:14px 0 6px">${title} <small style="font-weight:400" class="quiet">${hint}</small></p>
+<div class="row"><label class="btn primary">Take a photo<input type="file" name="${name}" accept="image/*" capture="environment" data-camera="1"></label>
+<label class="btn">Choose ${max > 1 ? "photos" : "a photo"}<input type="file" name="${name}" accept="image/*"${max > 1 ? " multiple" : ""}></label></div>
+<div class="thumbs" aria-live="polite"></div><p class="quiet pick-count" hidden></p></div>`;
+}
+
+const PHOTO_PICKER_SCRIPT = `
+(function(){
+  [].forEach.call(document.querySelectorAll('.pick'),function(pick){
+    var max=+pick.dataset.max, thumbs=pick.querySelector('.thumbs'), count=pick.querySelector('.pick-count');
+    function inputs(){return [].slice.call(pick.querySelectorAll('input[type=file]'));}
+    function refresh(){
+      var files=[]; inputs().forEach(function(i){[].push.apply(files,i.files);});
+      thumbs.innerHTML='';
+      files.slice(0,max).forEach(function(f){var img=document.createElement('img');img.alt='Photo added';img.src=URL.createObjectURL(f);thumbs.appendChild(img);});
+      count.hidden=!files.length;
+      count.textContent=files.length>max?('Only the first '+max+' will be sent.'):(files.length+(files.length===1?' photo':' photos')+' added.');
+    }
+    pick.addEventListener('change',function(e){
+      var input=e.target;
+      if(input.dataset.camera&&input.files.length&&max>1){
+        // Keep this shot and give the button a fresh input for the next one.
+        var next=input.cloneNode(); next.value=''; input.removeAttribute('data-camera'); input.parentNode.appendChild(next);
+        pick.appendChild(input);
+      }
+      refresh();
+    });
+  });
+})();`;
 
 export function endingPage(base: string, title: string, message: string, env: Env, extra?: Html): Html {
   return layout(

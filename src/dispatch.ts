@@ -45,6 +45,7 @@ export function vendorText(wo: WorkOrder, property: Property, tenant: Tenant | n
     `F.I.R.M. work order #${wo.id}: ${wo.title} at ${property.address}.`,
     `${who}: ${wo.contact_phone}.`,
     ...(notes ? [`Notes: ${notes.length > 200 ? `${notes.slice(0, 197)}...` : notes}`] : []),
+    "Tenant or an adult they authorize must be home; don't enter if no one is there unless it's an emergency.",
     "Full details and photos are in your email.",
   ];
   return parts.join(" ");
@@ -63,6 +64,7 @@ export function vendorEmailHtml(wo: WorkOrder, property: Property, vendor: Vendo
 <tr><td style="padding:2px 12px 2px 0;color:#666">Tenant email</td><td>${escape(wo.contact_email)}</td></tr>
 </table>
 ${notes ? `<p style="background:#fff6e0;padding:10px 12px;border-radius:6px"><strong>Notes from F.I.R.M.:</strong><br>${escape(notes).replace(/\n/g, "<br>")}</p>` : ""}
+<p><strong>Entry:</strong> the tenant or an adult 18 or older they authorize must be home for the visit. Please don't enter if no one is there unless it's an emergency.</p>
 <p><strong>The tenant's request</strong></p>
 <pre style="white-space:pre-wrap;font:inherit;background:#f5f6f7;padding:10px 12px;border-radius:6px">${linkify(wo.description)}</pre>
 <p style="font-size:13px;color:#666">Questions or an emergency on site? Call F.I.R.M. at ${escape(env.EMERGENCY_PHONE)}.</p>
