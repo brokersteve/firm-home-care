@@ -185,6 +185,9 @@ ${node.options.map((o, i) =>
 }
 
 /** The guided work order: what's wrong, photos of the item, and the appliance tag where it's easy to reach. */
+/** Work order visit windows: weekdays in business hours only, no nights, weekends or holidays. */
+export const VISIT_TIMES = ["Weekday mornings (8am to noon)", "Weekday afternoons (noon to 5pm)", "Any weekday, 8am to 5pm"];
+
 export function reportPage(base: string, env: Env, guide: Guide | null, answers: string, walked: Walk | null): Html {
   return layout(
     "Work order",
@@ -209,8 +212,8 @@ ${guide?.appliance
   ? html`<label for="tag">Photo of the model and serial tag <small>Only if it's easy to see: often inside the door, on the side or behind a front panel. Please don't move the appliance.</small></label>
 <input type="file" id="tag" name="tag" accept="image/*">`
   : ""}
-<label for="when">Best times for a visit</label>
-<input type="text" id="when" name="when" placeholder="e.g. weekdays after 3pm">
+<fieldset style="border:0;padding:0;margin:0"><legend><strong>Best times for a visit</strong> <small>Visits are on weekdays during business hours (8am to 5pm). Pick any that work.</small></legend>
+${VISIT_TIMES.map((t) => html`<label><input type="checkbox" name="when" value="${t}"> ${t}</label>`)}</fieldset>
 <label><input type="checkbox" name="pets" value="yes"> There are pets in the home</label>
 <p class="quiet">An adult 18 or older must be home for the visit (lease 6.5). If an appointment is missed, the technician can't get in, or the problem turns out to be the tenant's responsibility, the service call (up to $75) may be charged to you.</p>
 <button class="btn primary">Submit work order</button></form>

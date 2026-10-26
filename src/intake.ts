@@ -1,15 +1,13 @@
-// Reads the answers an owner sends from the New Property Intake form (the "Email my answers" or "Copy answers"
-// text), so staff can paste them in and get the home details and an inspection without retyping.
+// Reads "Label: value" home details, as the owner intake form emails them and the Walkthrough inspection's
+// "Copy for Home Care" button copies them, so staff can paste them in instead of retyping.
 import type { Property, PropertyFields } from "./env";
 import { FIELDS } from "./fields";
-import type { RoomChoices } from "./inspection-template";
 import { sameAddress } from "./sync";
 
 export interface Intake {
   address: string;
   /** HC fields found in the answers. Fields the owner skipped are left out, so they don't wipe what Rentec has. */
   fields: PropertyFields;
-  rooms: RoomChoices;
 }
 
 // The intake form prints home care answers under the same labels as the home details form.
@@ -47,22 +45,7 @@ export function parseIntake(text: string): Intake {
   const notes = LOCAL_NOTES.flatMap(([label, prefix]) => (answers.get(label) ? [`${prefix} ${answers.get(label)}`] : []));
   if (notes.length) fields["HC Local Notes"] = notes.join(". ");
 
-  const count = (label: string) => Number.parseInt(answers.get(label) ?? "", 10) || 0;
-  const other = answers.get("other rooms");
-  const has = (word: string) => (other ?? "").toLowerCase().includes(word);
-  return {
-    address: answers.get("property address") ?? "",
-    fields,
-    rooms: {
-      bedrooms: count("bedrooms"),
-      bathrooms: count("full baths"),
-      halfBathrooms: count("half baths"),
-      dining: has("dining"),
-      // Most homes have a laundry area, so assume one unless the owner answered the question.
-      laundry: other === undefined || has("laundry"),
-      garage: has("garage"),
-    },
-  };
+  return { address: answers.get("property address") ?? "", fields };
 }
 
 /** The one property whose address starts with the same house number and street name, or null. */

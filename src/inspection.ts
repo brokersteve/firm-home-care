@@ -108,7 +108,6 @@ inspectionRoutes.get("/admin/inspect", async (c) => {
       "Inspections",
       html`<h1>Inspections</h1>
 <h2>Start an inspection</h2>
-<p><a class="btn" href="/admin/intake">Start from an owner's intake answers</a></p>
 ${roomChoicesForm(
   "/admin/inspect",
   html`<label for="property">Property</label><select id="property" name="property">${properties.map((p) => html`<option value="${p.id}">${p.name}</option>`)}</select>
@@ -132,20 +131,19 @@ inspectionRoutes.post("/admin/inspect", async (c) => {
   return c.redirect(`/admin/inspect/${id}`, 303);
 });
 
-// Staff: paste the answers an owner sent from the New Property Intake form. Saves the home details to Rentec
-// and starts an inspection with the home's rooms.
+// Staff: paste home details copied from a Walkthrough inspection ("Copy for Home Care") or an owner's intake
+// email. They're saved to the property's HC fields in Rentec.
 const intakePage = (properties: Property[], text: string, error: string) =>
   layout(
-    "Start from intake",
-    html`<h1>Start from an owner's intake</h1>
-<p class="quiet">Paste the answers from the owner's "New property information" email. The home details go to the property in Rentec, and the inspection gets one room per bedroom and bathroom.</p>
+    "Paste home details",
+    html`<h1>Paste home details</h1>
+<p class="quiet">Paste the text from "Copy for Home Care" in a Walkthrough inspection, or the owner's intake email. Only the details it contains are changed in Rentec.</p>
 ${error ? html`<div class="card note"><p>${error}</p></div>` : ""}
 <form method="post" action="/admin/intake" class="card">
 <label for="text">Owner's answers</label><textarea id="text" name="text" rows="12" required>${text}</textarea>
 <label for="property">Property</label><select id="property" name="property"><option value="">Match by the address in the answers</option>${properties.map((p) => html`<option value="${p.id}">${p.name}</option>`)}</select>
-<label for="kind">Type</label><select id="kind" name="kind">${(Object.keys(KIND_LABELS) as InspectionKind[]).map((k) => html`<option value="${k}">${KIND_LABELS[k]}</option>`)}</select>
-<button class="btn primary">Save details and start</button></form>
-<a class="quiet" href="/admin/inspect">Back</a>`,
+<button class="btn primary">Save to Rentec</button></form>
+<a class="quiet" href="/admin/">Back</a>`,
   );
 
 inspectionRoutes.get("/admin/intake", async (c) => c.html(intakePage(await listProperties(c.env), "", "")));
@@ -153,12 +151,11 @@ inspectionRoutes.get("/admin/intake", async (c) => c.html(intakePage(await listP
 inspectionRoutes.post("/admin/intake", async (c) => {
   const body = await c.req.parseBody();
   const text = String(body["text"] ?? "").slice(0, 20000);
-  const kind = String(body["kind"]) as InspectionKind;
   const properties = await listProperties(c.env);
   const intake = parseIntake(text);
   const chosen = String(body["property"] ?? "");
   const property = chosen ? properties.find((p) => p.id === chosen) : matchProperty(intake.address, properties);
-  if (!property || !(kind in KIND_LABELS)) {
+  if (!property) {
     const reason = intake.address
       ? `No single property matches "${intake.address}". Pick the property from the list.`
       : "There's no property address in these answers. Pick the property from the list.";
@@ -170,8 +167,7 @@ inspectionRoutes.post("/admin/intake", async (c) => {
     console.error(`Intake save for ${property.id} failed: ${err}`);
     return c.html(intakePage(properties, text, "Couldn't save the details to Rentec. Nothing was changed. Please try again."), 502);
   }
-  const id = await create(c.env, property.id, kind, "staff", null, intake.rooms);
-  return c.redirect(`/admin/inspect/${id}?from=intake`, 303);
+  return c.redirect(`/admin/home/${encodeURIComponent(property.id)}?saved=1`, 303);
 });
 
 // Tenant: their own move-in form, one per tenant.
@@ -214,9 +210,7 @@ ${insp.status === "complete"
   ? html`<div class="card note"><p>Completed ${insp.completed_at?.slice(0, 10)}${insp.signed_name ? ` by ${insp.signed_name}` : ""}.
 ${insp.uploaded_to_rentec ? " Saved to the property's files in Rentec." : ""}</p><a class="btn primary" href="${root}/report.pdf">Open the report (PDF)</a></div>`
   : html`<p>${done} of ${insp.rooms.length} rooms done.</p>`}
-${c.req.query("from") === "intake"
-  ? html`<div class="card note"><p>Started from the owner's intake. Their answers are saved to the property in Rentec. Check them on site under Home details.</p></div>`
-  : ""}
+
 <div class="card">${insp.rooms.map(
   (r, i) => html`<a class="btn ${roomDone(r) ? "" : "primary"}" href="${root}/room/${i}">${roomDone(r) ? "✓ " : ""}${r.name}</a>`,
 )}</div>

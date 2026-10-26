@@ -59,9 +59,8 @@ describe("owner intake answers", () => {
     expect(intake.fields).not.toHaveProperty("HC Gas Shutoff");
   });
 
-  it("gets the rooms for the inspection", () => {
+  it("reads the property address", () => {
     expect(intake.address).toBe("101 Maple Ave, Charlotte NC");
-    expect(intake.rooms).toEqual({ bedrooms: 3, bathrooms: 2, halfBathrooms: 1, dining: false, laundry: true, garage: true });
   });
 
   it("copes with quoted replies", () => {

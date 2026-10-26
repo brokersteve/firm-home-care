@@ -6,7 +6,7 @@ import { formatDay } from "./dates";
 import type { Env, Property, Tenant } from "./env";
 import { EMERGENCY, FIXED, WORK_ORDER, findGuide, matchGuides, walk, type Guide, type Walk } from "./guides";
 import { verify } from "./links";
-import { emergencyEnding, endingPage, helpPage, homePage, layout, reportPage, safetyPage, stepPage } from "./pages";
+import { VISIT_TIMES, emergencyEnding, endingPage, helpPage, homePage, layout, reportPage, safetyPage, stepPage } from "./pages";
 import { savePhoto, servePhoto } from "./photos";
 import { sendDueReminders } from "./reminders";
 import { RentecClient } from "./rentec";
@@ -121,13 +121,14 @@ app.post("/t/:id/:sig/report/:guide", async (c) => {
   const tag = files("tag")[0];
   const tagUrl = tag ? await savePhoto(c.env, tag, `workorder/${tenant.id}`) : null;
 
+  const visitTimes = ([] as unknown[]).concat(body["when"] ?? []).map(String).filter((t) => VISIT_TIMES.includes(t));
   const title = ctx.guide?.title ?? (text("what").split(/[.\n]/)[0]!.slice(0, 80) || "Tenant request");
   const description = [
     `Submitted by ${tenant.first_name} ${tenant.last_name} through F.I.R.M. Home Care.`,
     "",
     `What's happening: ${text("what")}`,
     ...(text("where") ? [`Where: ${text("where")}`] : []),
-    ...(text("when") ? [`Best times: ${text("when")}`] : []),
+    ...(visitTimes.length ? [`Best times: ${visitTimes.join("; ")}`] : []),
     `Pets in the home: ${body["pets"] === "yes" ? "yes" : "no"}`,
     ...(ctx.guide?.drainLine && body["drain_ack"] === "1"
       ? ["Tenant acknowledged clearing a slow or clogged drain is their cost unless the line is collapsed or damaged through no fault of theirs."]
