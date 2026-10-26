@@ -22,7 +22,7 @@ h1{font-size:22px;margin:4px 0 12px}h2{font-size:17px;margin:0 0 8px}
   background:var(--card);color:var(--brand);font:inherit;font-weight:600;text-decoration:none;cursor:pointer}
 .btn.primary{background:var(--brand);color:var(--card)}.btn.danger{border-color:var(--alert);color:var(--alert)}
 dl{margin:0}dt{color:var(--quiet);font-size:14px;margin-top:8px}dd{margin:0}
-input[type=search],input[type=text],textarea,select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);font:inherit;background:var(--card);color:var(--ink)}
+input[type=search],input[type=text],input[type=tel],input[type=email],textarea,select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);font:inherit;background:var(--card);color:var(--ink)}
 textarea{min-height:96px}label{display:block;font-weight:600;margin:14px 0 6px}label small{font-weight:400;color:var(--quiet)}
 input[type=file]{width:100%;padding:8px 0}
 ol,ul{padding-left:20px}li{margin:6px 0}.quiet{color:var(--quiet);font-size:14px}
@@ -197,7 +197,7 @@ ${node.options.map((o, i) =>
 /** Work order visit windows: weekdays in business hours only, no nights, weekends or holidays. */
 export const VISIT_TIMES = ["Weekday mornings (8am to noon)", "Weekday afternoons (noon to 5pm)", "Any weekday, 8am to 5pm"];
 
-export function reportPage(base: string, env: Env, guide: Guide | null, answers: string, walked: Walk | null): Html {
+export function reportPage(base: string, env: Env, guide: Guide | null, answers: string, walked: Walk | null, tenant: Tenant, error = ""): Html {
   return layout(
     "Work order",
     html`<h1>Submit a work order</h1>
@@ -208,6 +208,7 @@ ${walked?.history.length
 ${guide?.leaseNote ? html`<div class="card note"><p>${guide.leaseNote}</p></div>` : ""}
 <form class="card" method="post" action="${base}/report/${guide?.id ?? "other"}" enctype="multipart/form-data">
 <input type="hidden" name="a" value="${answers}">
+${error ? html`<p class="card alert">${error}</p>` : ""}
 ${guide?.drainLine
   ? html`<label><input type="checkbox" name="drain_ack" value="1" required> I understand I'll be charged for clearing a slow or clogged drain, unless the line turns out to be collapsed or damaged through no fault of mine.</label>`
   : ""}
@@ -224,6 +225,10 @@ ${guide?.appliance
 <fieldset style="border:0;padding:0;margin:0"><legend><strong>Best times for a visit</strong> <small>Visits are on weekdays during business hours (8am to 5pm). Pick any that work.</small></legend>
 ${VISIT_TIMES.map((t) => html`<label><input type="checkbox" name="when" value="${t}"> ${t}</label>`)}</fieldset>
 <label><input type="checkbox" name="pets" value="yes"> There are pets in the home</label>
+<label for="phone">Your phone number <small>So the technician can reach you</small></label>
+<input type="tel" id="phone" name="phone" required autocomplete="tel" inputmode="tel" pattern="[\s()+.\-]*([0-9][\s()+.\-]*){10,11}" value="${tenant.phone ?? ""}" placeholder="704-555-0100">
+<label for="email">Your email</label>
+<input type="email" id="email" name="email" required autocomplete="email" value="${tenant.email ?? ""}">
 <p class="quiet">An adult 18 or older must be home for the visit (lease 6.5). If an appointment is missed, the technician can't get in, or the problem turns out to be the tenant's responsibility, the service call (up to $75) may be charged to you.</p>
 <button class="btn primary">Submit work order</button></form>
 <p class="quiet">Emergency? Call ${env.EMERGENCY_PHONE}.</p>`,

@@ -47,6 +47,7 @@ export function buildTenants(tenants: RentecTenant[], leases: RentecLease[], pro
       first_name: t.firstName,
       last_name: t.lastName,
       email: t.email,
+      phone: t.phone,
       move_in: lease.start,
       move_out: moveOut,
       insurance_expires: t.insuranceExpires,
@@ -79,12 +80,12 @@ export async function syncFromRentec(env: Env, today: string, client = RentecCli
       ),
       ...tenants.map((t) =>
         env.DB.prepare(
-          `INSERT INTO tenants (id, property_id, first_name, last_name, email, move_in, move_out, insurance_expires, active, synced_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO tenants (id, property_id, first_name, last_name, email, phone, move_in, move_out, insurance_expires, active, synced_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET property_id = excluded.property_id, first_name = excluded.first_name,
-             last_name = excluded.last_name, email = excluded.email, move_in = excluded.move_in, move_out = excluded.move_out,
+             last_name = excluded.last_name, email = excluded.email, phone = excluded.phone, move_in = excluded.move_in, move_out = excluded.move_out,
              insurance_expires = excluded.insurance_expires, active = excluded.active, synced_at = excluded.synced_at`,
-        ).bind(t.id, t.property_id, t.first_name, t.last_name, t.email, t.move_in, t.move_out, t.insurance_expires, t.active, now),
+        ).bind(t.id, t.property_id, t.first_name, t.last_name, t.email, t.phone, t.move_in, t.move_out, t.insurance_expires, t.active, now),
       ),
       // Anyone not seen in this sync has left Rentec's list: stop reminding them.
       env.DB.prepare("UPDATE tenants SET active = 0 WHERE synced_at < ?").bind(now),

@@ -31,7 +31,7 @@ export async function adminPage(env: Env) {
   return layout(
     "Admin",
     html`<h1>Home Care admin</h1>
-<a class="btn primary" href="/admin/intake">Paste home details</a> <a class="btn" href="/admin/inspect">Inspections</a>
+<a class="btn primary" href="/admin/workorders">Work orders</a> <a class="btn" href="/admin/intake">Paste home details</a> <a class="btn" href="/admin/inspect">Inspections</a>
 <div class="card"><h2>Last Rentec sync</h2>
 ${lastSync
   ? html`<p>${lastSync.started_at.slice(0, 16).replace("T", " ")} UTC: ${lastSync.properties ?? 0} properties, ${lastSync.tenants ?? 0} tenants

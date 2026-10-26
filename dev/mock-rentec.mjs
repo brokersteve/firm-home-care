@@ -31,7 +31,7 @@ const properties = [
 ];
 const tenants = [
   { renter_id: 501, property_id: 101, first_name: "Ana", last_name: "Reyes", email: "ana@example.com", insurance_expiration: "2026-11-20" },
-  { renter_id: 502, property_id: 102, first_name: "Bo", last_name: "Li", email: "bo@example.com" },
+  { renter_id: 502, property_id: 102, first_name: "Bo", last_name: "Li", email: "bo@example.com", cell_phone: "704-555-0142" },
 ];
 const leases = [
   { renter_id: 501, property_id: 101, start_date: "2026-07-26" },

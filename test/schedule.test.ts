@@ -9,6 +9,7 @@ const tenant = (over: Partial<Tenant> = {}): Tenant => ({
   first_name: "Ana",
   last_name: "Reyes",
   email: "ana@example.com",
+  phone: null,
   move_in: "2026-01-15",
   move_out: null,
   insurance_expires: null,

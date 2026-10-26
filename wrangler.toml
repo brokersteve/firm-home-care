@@ -4,7 +4,8 @@ compatibility_date = "2026-10-01"
 
 # Nightly Rentec sync at 07:00 UTC, then reminders go out.
 [triggers]
-crons = ["0 7 * * *"]
+# 7:00 UTC: nightly Rentec sync and reminders. Every 15 minutes: send texts held overnight.
+crons = ["0 7 * * *", "*/15 * * * *"]
 
 [[d1_databases]]
 binding = "DB"
@@ -26,6 +27,11 @@ RESIDENT_CONNECT_URL = "https://secure.rentecdirect.com/tenants/"
 # Comma-separated Rentec property IDs in the pilot. Empty = all properties.
 PILOT_PROPERTY_IDS = ""
 # The 10 pilot homes (Steve, 2026-10-26). Matched on house number and street name.
+# "Sent to vendor" confirmations go here; an Outlook rule files them by subject.
+OFFICE_EMAIL = "steve@firm.vip"
+# Texts to vendors only go out 8am to 9pm in this time zone.
+TIMEZONE = "America/New_York"
+TWILIO_FROM = ""
 PILOT_ADDRESSES = "619 Flynwood Pl; 425 Westham Ridge; 1620 Starbrook Dr; 2019 Stargrass; 3129 Kalamath; 5405 Hilltop; 7531 April Mist; 11312 Walland; 12474 Stone Garden; 15469 Asterwind"
 
 # Secrets (set with `wrangler secret put NAME`, never committed):
@@ -33,3 +39,4 @@ PILOT_ADDRESSES = "619 Flynwood Pl; 425 Westham Ridge; 1620 Starbrook Dr; 2019 S
 #   RESEND_API_KEY   email sending
 #   LINK_SECRET      random string used to sign tenant links
 #   ADMIN_TOKEN      password for the /admin page
+#   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN   texts to vendors

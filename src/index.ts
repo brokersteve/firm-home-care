@@ -13,6 +13,8 @@ import { RentecClient } from "./rentec";
 import { getProperty, getTenant, saveHomeDetails } from "./store";
 import { syncFromRentec } from "./sync";
 import { inspectionRoutes } from "./inspection";
+import { toE164 } from "./sms";
+import { dispatchRoutes, sendHeldTexts } from "./dispatch";
 import { ICON_180, ICON_192, ICON_512 } from "./icons";
 
 type Vars = { tenant: Tenant; property: Property; base: string };
@@ -121,7 +123,7 @@ app.get("/t/:id/:sig/report/:guide", (c) => {
   const raw = c.req.query("a") ?? "";
   const ctx = reportContext(c, c.req.param("guide"), raw);
   if (!ctx) return c.redirect(`${c.var.base}/help`);
-  return c.html(reportPage(c.var.base, c.env, ctx.guide, raw, ctx.walked));
+  return c.html(reportPage(c.var.base, c.env, ctx.guide, raw, ctx.walked, c.var.tenant));
 });
 
 const MAX_PHOTOS = 5;
@@ -133,6 +135,12 @@ app.post("/t/:id/:sig/report/:guide", async (c) => {
   if (!ctx) return notFound(c);
   const { tenant, property, base } = c.var;
   const text = (key: string) => String(body[key] ?? "").trim().slice(0, 2000);
+  const phone = text("phone").slice(0, 40);
+  const email = text("email").slice(0, 200);
+  if (!toE164(phone) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const error = "Please enter a phone number (10 digits) and an email address so we can reach you.";
+    return c.html(reportPage(base, c.env, ctx.guide, raw, ctx.walked, { ...tenant, phone, email }, error), 400);
+  }
 
   const files = (key: string) => ([] as unknown[]).concat(body[key] ?? []).filter((f): f is File => f instanceof File && f.size > 0);
   const photoUrls: string[] = [];
@@ -147,6 +155,7 @@ app.post("/t/:id/:sig/report/:guide", async (c) => {
   const title = ctx.guide?.title ?? (text("what").split(/[.\n]/)[0]!.slice(0, 80) || "Tenant request");
   const description = [
     `Submitted by ${tenant.first_name} ${tenant.last_name} through F.I.R.M. Home Care.`,
+    `Contact: ${phone}, ${email}`,
     "",
     `What's happening: ${text("what")}`,
     ...(text("where") ? [`Where: ${text("where")}`] : []),
@@ -179,6 +188,12 @@ app.post("/t/:id/:sig/report/:guide", async (c) => {
     );
   }
   await recordOutcome(c.env, tenant.id, ctx.guide?.id ?? "other", "work_order", ctx.walked?.history ?? [], workOrderId);
+  await c.env.DB.prepare(
+    `INSERT INTO work_orders (rentec_id, tenant_id, property_id, guide_id, title, description, contact_phone, contact_email, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(workOrderId || null, tenant.id, property.id, ctx.guide?.id ?? null, title, description, phone, email, new Date().toISOString())
+    .run();
   return c.html(
     endingPage(
       base,
@@ -242,6 +257,7 @@ app.post("/admin/home/:property", async (c) => {
 });
 
 app.route("/", inspectionRoutes);
+app.route("/", dispatchRoutes);
 
 app.get("/", (c) => c.text("F.I.R.M. Home Care"));
 
@@ -255,7 +271,8 @@ async function runNightly(env: Env): Promise<void> {
 
 export default {
   fetch: app.fetch,
-  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(runNightly(env));
+  async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    if (event.cron === "*/15 * * * *") ctx.waitUntil(sendHeldTexts(env, new Date()));
+    else ctx.waitUntil(runNightly(env));
   },
 };

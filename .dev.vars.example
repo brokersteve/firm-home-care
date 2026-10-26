@@ -7,3 +7,7 @@ APP_URL=http://localhost:8787
 
 # Empty = every property (the mock Rentec has only test homes)
 PILOT_ADDRESSES=
+TWILIO_ACCOUNT_SID=dev
+TWILIO_AUTH_TOKEN=log
+TWILIO_FROM=+17045550000
+OFFICE_EMAIL=office@example.com

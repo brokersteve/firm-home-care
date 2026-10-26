@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { reminderEmail } from "../src/email";
 import type { Property, Tenant } from "../src/env";
 
-const tenant: Tenant = { id: "1", property_id: "p", first_name: "Ana", last_name: "R", email: "a@x.com", move_in: "2026-01-01", move_out: null, insurance_expires: "2026-11-20", active: 1 };
+const tenant: Tenant = { id: "1", property_id: "p", first_name: "Ana", last_name: "R", email: "a@x.com", phone: null, move_in: "2026-01-01", move_out: null, insurance_expires: "2026-11-20", active: 1 };
 const property: Property = {
   id: "p",
   name: "412 Maple",

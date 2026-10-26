@@ -14,6 +14,14 @@ export interface Env {
   RESEND_API_KEY: string;
   LINK_SECRET: string;
   ADMIN_TOKEN: string;
+  /** Where "sent to vendor" confirmations go, e.g. steve@firm.vip. */
+  OFFICE_EMAIL: string;
+  /** Local time zone for text quiet hours, e.g. America/New_York. */
+  TIMEZONE: string;
+  TWILIO_ACCOUNT_SID: string;
+  TWILIO_AUTH_TOKEN: string;
+  /** The Twilio number texts come from, as +1XXXXXXXXXX. */
+  TWILIO_FROM: string;
 }
 
 /** The "HC ..." custom fields F.I.R.M. keeps on each Rentec property. */
@@ -32,6 +40,7 @@ export interface Tenant {
   first_name: string;
   last_name: string;
   email: string | null;
+  phone: string | null;
   move_in: string | null;
   move_out: string | null;
   insurance_expires: string | null;

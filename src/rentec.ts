@@ -25,6 +25,7 @@ export interface RentecTenant {
   firstName: string;
   lastName: string;
   email: string | null;
+  phone: string | null;
   insuranceExpires: string | null;
 }
 
@@ -194,6 +195,7 @@ export function toTenant(row: Json): RentecTenant {
     firstName: str(row, "first_name", "firstname", "firstName"),
     lastName: str(row, "last_name", "lastname", "lastName"),
     email: str(row, "email", "email_address", "emailAddress") || null,
+    phone: str(row, "cell_phone", "mobile_phone", "phone", "phone_number", "cellPhone", "mobile") || null,
     insuranceExpires: toDay(pick(row, "insurance_expiration", "renters_insurance_expiration", "insurance_expires")),
   };
 }
