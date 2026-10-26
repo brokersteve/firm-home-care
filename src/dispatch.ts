@@ -14,8 +14,12 @@ export interface Vendor {
   id: number;
   name: string;
   trade: string | null;
+  contact: string | null;
   email: string | null;
+  /** Cell, for texts. */
   phone: string | null;
+  /** A landline: shown so staff can call, never texted. */
+  office_phone: string | null;
   active: number;
 }
 
@@ -131,7 +135,7 @@ export async function dispatchWorkOrder(env: Env, wo: WorkOrder, vendor: Vendor,
   const textLine = {
     sent: `Texted to ${vendor.phone}.`,
     held: `Text to ${vendor.phone} is held until ${result.textAt?.toLocaleString("en-US", { timeZone: env.TIMEZONE, weekday: "short", hour: "numeric", minute: "2-digit" })} (no texts 9pm to 8am).`,
-    none: "No text sent: no cell number on file for this vendor.",
+    none: `No text sent: no cell number on file for this vendor.${vendor.office_phone ? ` Office: ${vendor.office_phone}.` : ""}`,
     failed: `The text to ${vendor.phone} didn't go through. Please call them.`,
   }[result.text];
   const emailLine = result.emailed ? `Emailed to ${vendor.email}.` : "No email sent: no email on file for this vendor.";
@@ -213,9 +217,16 @@ ${sentTo ? html`<p>Last sent to <strong>${sentTo.name}</strong> on ${when(wo.sen
 <form method="post" class="card">
 <h2>${sentTo ? "Send again" : "Send to maintenance or a vendor"}</h2>
 <label for="vendor">Send to</label>
-<select id="vendor" name="vendor" required>${list.map(
-        (v) => html`<option value="${v.id}" ${v.id === wo.vendor_id ? "selected" : ""}>${v.name}${v.trade ? ` (${v.trade})` : ""}${!v.email && !v.phone ? " - no email or cell on file" : ""}</option>`,
-      )}</select>
+<select id="vendor" name="vendor" required><option value="">Pick a vendor</option>${list.map(
+        (v) => html`<option value="${v.id}" data-email="${v.email ? 1 : 0}" data-cell="${v.phone ? 1 : 0}" data-office="${v.office_phone ?? ""}" ${v.id === wo.vendor_id ? "selected" : ""}>${v.name}${v.trade ? ` (${v.trade})` : ""}${!v.email && !v.phone ? " - no email or cell on file" : ""}</option>`,
+      )}<option value="new">+ A new vendor (type their details)</option></select>
+<div id="new-vendor" hidden>
+<label for="nv-name">Vendor name</label><input type="text" id="nv-name" name="new_name">
+<label for="nv-contact">Contact person <small>Optional</small></label><input type="text" id="nv-contact" name="new_contact">
+<label for="nv-email">Email</label><input type="email" id="nv-email" name="new_email">
+<label for="nv-phone">Cell for texts</label><input type="tel" id="nv-phone" name="new_phone">
+<label for="nv-trade">Trade <small>Optional, e.g. Plumbing</small></label><input type="text" id="nv-trade" name="new_trade">
+<p class="quiet">They're added to your vendor list so they're in the dropdown next time. Give an email, a cell, or both.</p></div>
 <label for="notes">Notes for the vendor <small>Gate code, parts, how urgent, who to bill</small></label>
 <textarea id="notes" name="notes">${wo.notes ?? ""}</textarea>
 <button class="btn primary">Send now</button>
@@ -223,15 +234,35 @@ ${sentTo ? html`<p>Last sent to <strong>${sentTo.name}</strong> on ${when(wo.sen
 <div class="card"><h2>The tenant's request</h2><p>Phone: <a href="tel:${wo.contact_phone}">${wo.contact_phone}</a><br>Email: ${wo.contact_email}</p>
 <pre style="white-space:pre-wrap;font:inherit">${wo.description}</pre></div>
 <a class="quiet" href="/admin/workorders">Back to work orders</a>`,
+      NEW_VENDOR_SCRIPT,
     ),
   );
 });
+
+// Shows the new-vendor fields when "A new vendor" is picked, and makes the name required then.
+const NEW_VENDOR_SCRIPT = `
+(function(){
+  var sel=document.getElementById('vendor'), box=document.getElementById('new-vendor'), name=document.getElementById('nv-name');
+  function sync(){ var on=sel.value==='new'; box.hidden=!on; name.required=on; }
+  sel.addEventListener('change',sync); sync();
+})();`;
 
 dispatchRoutes.post("/admin/workorders/:id", async (c) => {
   const wo = await loadWorkOrder(c.env, c.req.param("id"));
   if (!wo) return c.text("Work order not found", 404);
   const body = await c.req.parseBody();
-  const vendor = (await vendors(c.env, true)).find((v) => v.id === Number(body["vendor"]));
+  let vendor: Vendor | undefined;
+  if (body["vendor"] === "new") {
+    const v = vendorFields(body, "new_");
+    if (!v.name || (!v.email && !(v.phone && toE164(v.phone)))) {
+      return c.redirect(`/admin/workorders/${wo.id}?sent=${encodeURIComponent("For a new vendor, enter a name and an email or cell number.")}`, 303);
+    }
+    vendor = (await c.env.DB.prepare("INSERT INTO vendors (name, contact, trade, email, phone) VALUES (?, ?, ?, ?, ?) RETURNING *")
+      .bind(v.name, v.contact, v.trade, v.email, v.phone)
+      .first<Vendor>()) ?? undefined;
+  } else {
+    vendor = (await vendors(c.env, true)).find((v) => v.id === Number(body["vendor"]));
+  }
   if (!vendor) return c.text("Pick a vendor", 400);
   if (!vendor.email && !(vendor.phone && toE164(vendor.phone))) {
     return c.redirect(`/admin/workorders/${wo.id}?sent=${encodeURIComponent(`${vendor.name} has no email or cell number on file. Add one under Vendors first.`)}`, 303);
@@ -243,7 +274,7 @@ dispatchRoutes.post("/admin/workorders/:id", async (c) => {
     const textPart = {
       sent: "texted",
       held: `the text goes out at ${r.textAt?.toLocaleString("en-US", { timeZone: c.env.TIMEZONE, weekday: "short", hour: "numeric", minute: "2-digit" })}`,
-      none: "not texted (no cell on file)",
+      none: `not texted (no cell on file${vendor.office_phone ? `; call ${vendor.office_phone}` : ""})`,
       failed: "the text failed, so please call them",
     }[r.text];
     message = `Sent to ${vendor.name}: ${r.emailed ? "emailed" : "not emailed (no email on file)"}, ${textPart}. A copy went to ${c.env.OFFICE_EMAIL}.`;
@@ -265,27 +296,36 @@ dispatchRoutes.get("/admin/vendors", async (c) => {
 <p class="quiet">Who you can send work orders to. Texts need a cell number; the email gets the full request and photos.</p>
 ${list.map(
   (v) => html`<form method="post" action="/admin/vendors/${v.id}" class="card"${v.active ? "" : html` style="opacity:.6"`}>
-${field("name", "Name", "text", v.name)}${field("trade", "Trade", "text", v.trade ?? "")}${field("email", "Email", "email", v.email ?? "")}${field("phone", "Cell for texts", "tel", v.phone ?? "")}
+${field("name", "Name", "text", v.name)}${field("contact", "Contact person", "text", v.contact ?? "")}${field("trade", "Trade", "text", v.trade ?? "")}${field("email", "Email", "email", v.email ?? "")}${field("phone", "Cell for texts", "tel", v.phone ?? "")}${field("office_phone", "Office phone (not texted)", "tel", v.office_phone ?? "")}
 <label><input type="checkbox" name="active" value="1" ${v.active ? "checked" : ""}> Show in the Send to list</label>
 <button class="btn">Save</button></form>`,
 )}
 <form method="post" action="/admin/vendors" class="card"><h2>Add a vendor</h2>
-${field("name", "Name", "text")}${field("trade", "Trade", "text")}${field("email", "Email", "email")}${field("phone", "Cell for texts", "tel")}
+${field("name", "Name", "text")}${field("contact", "Contact person", "text")}${field("trade", "Trade", "text")}${field("email", "Email", "email")}${field("phone", "Cell for texts", "tel")}${field("office_phone", "Office phone (not texted)", "tel")}
 <button class="btn primary">Add vendor</button></form>
 <a class="quiet" href="/admin/workorders">Back to work orders</a>`,
     ),
   );
 });
 
-function vendorFields(body: Record<string, unknown>) {
-  const s = (k: string) => String(body[k] ?? "").trim().slice(0, 200);
-  return { name: s("name"), trade: s("trade") || null, email: s("email") || null, phone: s("phone") || null };
+function vendorFields(body: Record<string, unknown>, prefix = "") {
+  const s = (k: string) => String(body[prefix + k] ?? "").trim().slice(0, 200);
+  return {
+    name: s("name"),
+    contact: s("contact") || null,
+    trade: s("trade") || null,
+    email: s("email") || null,
+    phone: s("phone") || null,
+    office_phone: s("office_phone") || null,
+  };
 }
 
 dispatchRoutes.post("/admin/vendors", async (c) => {
   const v = vendorFields(await c.req.parseBody());
   if (!v.name) return c.redirect("/admin/vendors", 303);
-  await c.env.DB.prepare("INSERT INTO vendors (name, trade, email, phone) VALUES (?, ?, ?, ?)").bind(v.name, v.trade, v.email, v.phone).run();
+  await c.env.DB.prepare("INSERT INTO vendors (name, contact, trade, email, phone, office_phone) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(v.name, v.contact, v.trade, v.email, v.phone, v.office_phone)
+    .run();
   return c.redirect("/admin/vendors", 303);
 });
 
@@ -293,8 +333,8 @@ dispatchRoutes.post("/admin/vendors/:id", async (c) => {
   const body = await c.req.parseBody();
   const v = vendorFields(body);
   if (!v.name) return c.redirect("/admin/vendors", 303);
-  await c.env.DB.prepare("UPDATE vendors SET name = ?, trade = ?, email = ?, phone = ?, active = ? WHERE id = ?")
-    .bind(v.name, v.trade, v.email, v.phone, body["active"] === "1" ? 1 : 0, Number(c.req.param("id")) || 0)
+  await c.env.DB.prepare("UPDATE vendors SET name = ?, contact = ?, trade = ?, email = ?, phone = ?, office_phone = ?, active = ? WHERE id = ?")
+    .bind(v.name, v.contact, v.trade, v.email, v.phone, v.office_phone, body["active"] === "1" ? 1 : 0, Number(c.req.param("id")) || 0)
     .run();
   return c.redirect("/admin/vendors", 303);
 });

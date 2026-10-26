@@ -14,12 +14,12 @@ pages = {}
 for p, s, h, l in d:
     if s == 200: pages[p[len(base)+1:]] = {"t": title_of(h), "b": body_of(h)}
 # Staff pages, captured from the local app after seeding sample vendors and work orders .
-for k, f in [("/admin/workorders", "admin__admin_workorders.html"), ("/admin/workorders/4", "admin__admin_workorders_4.html"),
-             ("/admin/workorders/5", "admin__admin_workorders_5.html"), ("/admin/vendors", "admin__admin_vendors.html")]:
+for k, f in [("/admin/workorders", "admin__admin_workorders.html"), ("/admin/workorders/1", "admin__admin_workorders_1.html"),
+             ("/admin/workorders/2", "admin__admin_workorders_2.html"), ("/admin/vendors", "admin__admin_vendors.html")]:
     h = open(DIR + f).read(); pages[k] = {"t": title_of(h), "b": body_of(h)}
 for k, f in [("__fixed", "fixed.html"), ("__submitted", "submitted.html")]:
     h = open(DIR + f).read(); pages[k] = {"t": title_of(h), "b": body_of(h)}
-pages["__submitted"]["b"] = pages["__submitted"]["b"].replace("</main>", '<div class="card note"><p><strong>Demo:</strong> see what F.I.R.M. staff do next. A sample work order like this one is waiting to be sent to a vendor.</p><a class="btn primary" href="/admin/workorders/5">Open it as staff</a></div></main>', 1)
+pages["__submitted"]["b"] = pages["__submitted"]["b"].replace("</main>", '<div class="card note"><p><strong>Demo:</strong> see what F.I.R.M. staff do next. A sample work order like this one is waiting to be sent to a vendor.</p><a class="btn primary" href="/admin/workorders/2">Open it as staff</a></div></main>', 1)
 assert "Open it as staff" in pages["__submitted"]["b"]
 first = [h for p, s, h, l in d if p == base + "/"][0]
 css = re.search(r'<style>(.*?)</style>', first, re.S).group(1)
@@ -58,11 +58,15 @@ script = r'''
     if(/\/report\//.test(action)){ show('__submitted',true); return; }
     var sel=f.querySelector('#vendor');
     if(/^\/admin\/workorders\/\d+$/.test(current)&&sel){
-      var name=sel.options[sel.selectedIndex].text.replace(/ \(.*$/,''), id=current.split('/').pop();
+      var opt=sel.options[sel.selectedIndex], id=current.split('/').pop(), isNew=sel.value==='new';
+      var name=isNew?f.querySelector('#nv-name').value.trim():opt.text.replace(/ \(.*$/,'').replace(/ - no email.*$/,'');
+      var email=isNew?!!f.querySelector('#nv-email').value.trim():opt.dataset.email==='1';
+      var cell=isNew?!!f.querySelector('#nv-phone').value.trim():opt.dataset.cell==='1';
+      if(!email&&!cell){ note(name+' has no email or cell number on file. Add one under Vendors first.'); return; }
       var hour=+new Date().toLocaleString('en-US',{timeZone:'America/New_York',hour:'numeric',hour12:false});
-      var text=(hour>=8&&hour<21)?'texted':'the text goes out at 8am (no texts 9pm to 8am)';
+      var text=cell?((hour>=8&&hour<21)?'texted':'the text goes out at 8am (no texts 9pm to 8am)'):('not texted (no cell on file'+(opt.dataset.office?'; call '+opt.dataset.office:'')+')');
       sent[id]=name;
-      note('Sent to '+name+': emailed, '+text+'. A copy went to steve@firm.vip for your Outlook folder. (Demo: nothing was actually sent.)');
+      note('Sent to '+name+': '+(email?'emailed':'not emailed (no email on file)')+', '+text+'. A copy went to steve@firm.vip for your Outlook folder.'+(isNew?' '+name+' was added to your vendor list.':'')+' (Demo: nothing was actually sent.)');
       return;
     }
     if(current.indexOf('/admin')===0){ var n=f.querySelector('.demo-note')||document.createElement('p'); n.className='demo-note'; n.textContent='In the real app this saves the vendor. The demo does not save it.'; f.appendChild(n); return; }
@@ -78,7 +82,7 @@ html = f'''<title>FIRM Home Care Demo</title>
 .demo-bar a{{color:var(--brand);font-weight:600}}
 .demo-note{{background:var(--tint);border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}}
 </style>
-<div class="demo-bar"><strong>Demo</strong> with a sample home, tenant and vendors. Nothing you enter is saved or sent.<br><a href="#tenant">Tenant view</a> &middot; <a href="/admin/workorders">Staff view: work orders</a></div>
+<div class="demo-bar"><strong>Demo</strong> with a sample home and tenant, and your vendor list. Nothing you enter is saved or sent.<br><a href="#tenant">Tenant view</a> &middot; <a href="/admin/workorders">Staff view: work orders</a></div>
 <div id="app"></div>
 <script id="pages" type="application/json">{blob}</script>
 <script>{script}</script>
