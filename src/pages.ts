@@ -250,7 +250,7 @@ ${guide?.appliance
 ${VISIT_TIMES.map((t) => html`<label><input type="checkbox" name="when" value="${t}"> ${t}</label>`)}</fieldset>
 <label><input type="checkbox" name="pets" value="yes"> There are pets in the home</label>
 <label for="phone">Your phone number <small>So the technician can reach you</small></label>
-<input type="tel" id="phone" name="phone" required autocomplete="tel" inputmode="tel" pattern="[\s()+.\-]*([0-9][\s()+.\-]*){10,11}" value="${tenant.phone ?? ""}" placeholder="704-555-0100">
+<input type="tel" id="phone" name="phone" required autocomplete="tel" inputmode="tel" pattern="[^0-9]*([0-9][^0-9]*){10,11}" value="${tenant.phone ?? ""}" placeholder="704-555-0100">
 <label for="email">Your email</label>
 <input type="email" id="email" name="email" required autocomplete="email" value="${tenant.email ?? ""}">
 <p class="quiet">An adult 18 or older must be home for the visit (lease 6.5). If an appointment is missed, the technician can't get in, or the problem turns out to be the tenant's responsibility, the service call (up to $75) may be charged to you.</p>
