@@ -16,6 +16,7 @@ const PATHS = {
   leases: "/leases",
   workOrders: "/workorders",
   messages: "/messages",
+  files: "/files",
 };
 
 export interface RentecTenant {
@@ -101,6 +102,24 @@ export class RentecClient {
       source: "F.I.R.M. Home Care",
     })) as Json;
     return String(pick(body, "id", "work_order_id", "workorder_id") ?? pick(pick(body, "data") as Json ?? {}, "id") ?? "");
+  }
+
+  /** Saves "HC ..." custom fields on a property (needs Properties: Write on the key). */
+  async updatePropertyFields(propertyId: string, fields: PropertyFields): Promise<void> {
+    await this.request("PUT", `${PATHS.properties}/${encodeURIComponent(propertyId)}`, { custom_fields: fields });
+  }
+
+  /** Uploads a file (an inspection report) to a property's file library (needs Files: Write on the key). */
+  async uploadPropertyFile(propertyId: string, filename: string, contentType: string, bytes: ArrayBuffer): Promise<void> {
+    const form = new FormData();
+    form.append("property_id", propertyId);
+    form.append("file", new Blob([bytes], { type: contentType }), filename);
+    const res = await this.fetcher(`${this.baseUrl}${PATHS.files}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.apiKey}`, Accept: "application/json" },
+      body: form,
+    });
+    if (!res.ok) throw new Error(`Rentec file upload failed: ${res.status} ${(await res.text()).slice(0, 200)}`);
   }
 
   /** Logs a copy of a reminder email to the tenant's message history in Rentec. */

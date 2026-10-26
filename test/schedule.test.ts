@@ -36,8 +36,9 @@ describe("dueReminders", () => {
     expect(kinds(tenant(), fields, "2026-04-15").some((k) => k.startsWith("filter"))).toBe(false);
   });
 
-  it("defaults to every 3 months when the field is missing or nonsense", () => {
-    expect(kinds(tenant(), { "HC Filter Months": "often" }, "2026-04-15")).toContain("filter@2026-04-15");
+  it("defaults to the lease's 60 days (every 2 months) when the field is missing or nonsense", () => {
+    expect(kinds(tenant(), { "HC Filter Months": "often" }, "2026-03-15")).toContain("filter@2026-03-15");
+    expect(kinds(tenant(), {}, "2026-05-15")).toContain("filter@2026-05-15");
   });
 
   it("sends the monthly detector test on the 1st, with a week to catch up", () => {

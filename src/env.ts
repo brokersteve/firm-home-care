@@ -1,5 +1,7 @@
 export interface Env {
   DB: D1Database;
+  PHOTOS: R2Bucket;
+  COMPANY_NAME: string;
   APP_URL: string;
   RENTEC_BASE_URL: string;
   EMAIL_FROM: string;

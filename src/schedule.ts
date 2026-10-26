@@ -18,7 +18,8 @@ export interface DueReminder {
 /** A reminder missed by a failed nightly run still goes out if it is at most this many days late. */
 export const CATCH_UP_DAYS = 7;
 
-const DEFAULT_FILTER_MONTHS = 3;
+// The lease (6.3) says filters are replaced at least every 60 days.
+const DEFAULT_FILTER_MONTHS = 2;
 
 export function filterMonths(fields: PropertyFields): number {
   const months = Number.parseInt(fields["HC Filter Months"] ?? "", 10);

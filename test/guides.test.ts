@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { EMERGENCY, FIXED, GUIDES, WORK_ORDER, fillText, findGuide, matchGuides, walk } from "../src/guides";
+import { DIAGRAMS } from "../src/diagrams";
+import { EMERGENCY, FIXED, GUIDES, WORK_ORDER, fillText, findGuide, matchGuides, suggestions, walk } from "../src/guides";
 
 const ENDINGS = new Set<string>([FIXED, WORK_ORDER, EMERGENCY]);
 
@@ -28,6 +29,10 @@ describe("guide content", () => {
       expect([...seen].sort()).toEqual(Object.keys(guide.nodes).sort());
     });
 
+    it(`${guide.id}: every diagram it names exists`, () => {
+      for (const node of Object.values(guide.nodes)) if (node.diagram) expect(DIAGRAMS[node.diagram]).toContain("<svg");
+    });
+
     it(`${guide.id}: always offers a way to a work order`, () => {
       const all = Object.values(guide.nodes).flatMap((n) => n.options.map((o) => o.next));
       expect(all).toContain(WORK_ORDER);
@@ -44,6 +49,8 @@ describe("matchGuides", () => {
     ["AC not cooling", "hvac"],
     ["kitchen sink clogged", "drain"],
     ["fridge is warm", "fridge"],
+    ["water leaking under the kitchen sink", "leak"],
+    ["I'm locked out", "lockout"],
   ])("%s -> %s", (query, id) => {
     expect(matchGuides(query)[0]?.id).toBe(id);
   });
@@ -78,5 +85,35 @@ describe("walk", () => {
 describe("fillText", () => {
   it("falls back politely when a field is empty", () => {
     expect(fillText("Panel: {HC Breaker Panel}", {})).toBe("Panel: ask F.I.R.M. if you're not sure");
+  });
+});
+
+describe("suggestions", () => {
+  const find = (typed: string) =>
+    suggestions().filter((s) => typed.toLowerCase().split(/\s+/).every((w) => s.terms.includes(w))).map((s) => s.guide);
+
+  it("offers the right guide as the tenant types", () => {
+    expect(find("garb")).toContain("disposal");
+    expect(new Set(find("toilet run"))).toEqual(new Set(["toilet"]));
+    expect(find("furnace")).toEqual(["hvac"]);
+    expect(find("smoke")).toContain("detector");
+    expect(find("hot water")[0]).toBe("hot_water");
+  });
+
+  it("has no duplicate labels", () => {
+    const labels = suggestions().map((s) => s.label);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+});
+
+describe("filters in guide text", () => {
+  it("lists every filter location", () => {
+    const text = fillText("{Filters}", {
+      "HC Filter 1 Size": "16x25x1",
+      "HC Filter 1 Location": "Hallway ceiling",
+      "HC Filter 2 Size": "20x20x1",
+      "HC Filter 2 Location": "Basement furnace",
+    });
+    expect(text).toBe("16x25x1 (Hallway ceiling) and 20x20x1 (Basement furnace)");
   });
 });

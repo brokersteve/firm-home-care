@@ -1,21 +1,11 @@
 import { html } from "hono/html";
+import type { Property } from "./env";
 import type { Env } from "./env";
 import { layout } from "./pages";
+import { FIELDS, REQUIRED_FIELDS } from "./fields";
 import { listProperties } from "./store";
 
-/** The custom fields every pilot property should have filled in. */
-export const REQUIRED_FIELDS = [
-  "HC Filter Size",
-  "HC Filter Months",
-  "HC Filter Location",
-  "HC Smoke Detectors",
-  "HC Detector Battery",
-  "HC Breaker Panel",
-  "HC Water Shutoff",
-  "HC Trash Day",
-];
-
-export async function adminPage(env: Env, token: string) {
+export async function adminPage(env: Env) {
   const properties = await listProperties(env);
   const tenants = await env.DB.prepare(
     "SELECT property_id, COUNT(*) AS n, SUM(email IS NULL) AS no_email FROM tenants WHERE active = 1 GROUP BY property_id",
@@ -37,21 +27,43 @@ export async function adminPage(env: Env, token: string) {
   return layout(
     "Admin",
     html`<h1>Home Care admin</h1>
+<a class="btn primary" href="/admin/inspect">Inspections</a>
 <div class="card"><h2>Last Rentec sync</h2>
 ${lastSync
   ? html`<p>${lastSync.started_at.slice(0, 16).replace("T", " ")} UTC: ${lastSync.properties ?? 0} properties, ${lastSync.tenants ?? 0} tenants
 ${lastSync.error ? html`<br><strong>Error:</strong> ${lastSync.error}` : ""}</p>`
   : html`<p class="quiet">Never run.</p>`}
-<form method="post" action="/admin/run?token=${token}"><button class="btn">Sync and send due reminders now</button></form></div>
+<form method="post" action="/admin/run"><button class="btn">Sync and send due reminders now</button></form></div>
 <div class="card"><h2>Pilot properties</h2><table><tr><th>Property</th><th>Tenants</th><th>Missing fields</th></tr>
 ${properties.map((p) => {
   const t = byProperty.get(p.id);
   const missing = REQUIRED_FIELDS.filter((f) => !p.fields[f]);
-  return html`<tr><td>${p.name}</td><td>${t?.n ?? 0}${t?.no_email ? html` (${t.no_email} without email)` : ""}</td><td>${missing.length ? missing.join(", ") : "None"}</td></tr>`;
+  return html`<tr><td><a href="/admin/home/${encodeURIComponent(p.id)}">${p.name}</a></td><td>${t?.n ?? 0}${t?.no_email ? html` (${t.no_email} without email)` : ""}</td><td>${missing.length ? missing.join(", ") : "None"}</td></tr>`;
 })}</table></div>
 <div class="card"><h2>Reminders</h2><table><tr><th>Reminder</th><th>Sent</th><th>Done</th></tr>
 ${reminders.results.map((r) => html`<tr><td>${r.kind}</td><td>${r.sent}</td><td>${r.done}</td></tr>`)}</table></div>
 <div class="card"><h2>Troubleshooting</h2><table><tr><th>Guide</th><th>Fixed by tenant</th><th>Work orders</th></tr>
 ${outcomes.results.map((r) => html`<tr><td>${r.guide_id}</td><td>${r.fixed}</td><td>${r.work_orders}</td></tr>`)}</table></div>`,
+  );
+}
+
+/** The phone form an inspector fills in at the property. Saving writes the fields to Rentec. */
+export function homeDetailsPage(property: Property, saved: boolean) {
+  const sections = [...new Set(FIELDS.map((f) => f.section))];
+  return layout(
+    "Home details",
+    html`<h1>Home details</h1><p class="quiet">${property.address}</p>
+${saved ? html`<div class="card note"><p>Saved to Rentec.</p></div>` : ""}
+<form method="post">
+${sections.map(
+  (section) => html`<div class="card"><h2>${section}</h2>
+${FIELDS.filter((f) => f.section === section).map(
+  (f) => html`<label for="${f.name}">${f.label}${f.required ? " *" : ""} <small>${f.hint}</small></label>
+<input type="text" id="${f.name}" name="${f.name}" value="${property.fields[f.name] ?? ""}" ${f.choices ? html`list="${f.name}-choices"` : ""}>
+${f.choices ? html`<datalist id="${f.name}-choices">${f.choices.map((c) => html`<option value="${c}">`)}</datalist>` : ""}`,
+)}</div>`,
+)}
+<button class="btn primary">Save to Rentec</button></form>
+<a class="quiet" href="/admin/">Back to admin</a>`,
   );
 }

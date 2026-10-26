@@ -11,11 +11,17 @@ binding = "DB"
 database_name = "firm-home-care"
 database_id = "REPLACE_WITH_D1_DATABASE_ID"
 
+# Photos tenants attach to work orders, and inspection photos.
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "firm-home-care-photos"
+
 [vars]
 APP_URL = "https://firm-home-care.example.workers.dev"
 RENTEC_BASE_URL = "https://secure.rentecdirect.com/api/v3"
 EMAIL_FROM = "F.I.R.M. Home Care <homecare@example.com>"
-EMERGENCY_PHONE = "000-000-0000"
+COMPANY_NAME = "First Investor Realty & Management"
+EMERGENCY_PHONE = "704-430-6193"
 RESIDENT_CONNECT_URL = "https://secure.rentecdirect.com/tenants/"
 # Comma-separated Rentec property IDs in the pilot. Empty = all properties.
 PILOT_PROPERTY_IDS = ""

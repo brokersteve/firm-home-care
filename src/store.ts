@@ -1,4 +1,6 @@
 import type { Env, Property, Tenant } from "./env";
+import { FIELDS } from "./fields";
+import { RentecClient } from "./rentec";
 
 interface PropertyRow {
   id: string;
@@ -28,4 +30,17 @@ export async function listProperties(env: Env): Promise<Property[]> {
 export async function activeTenants(env: Env): Promise<Tenant[]> {
   const { results } = await env.DB.prepare("SELECT * FROM tenants WHERE active = 1").all<Tenant>();
   return results;
+}
+
+/** Saves the home details form: Rentec first (the source of truth), then our copy. */
+export async function saveHomeDetails(env: Env, property: Property, body: Record<string, unknown>, client = RentecClient.fromEnv(env)): Promise<Property> {
+  const fields = { ...property.fields };
+  for (const f of FIELDS) {
+    const value = String(body[f.name] ?? "").trim().slice(0, 500);
+    if (value) fields[f.name] = value;
+    else delete fields[f.name];
+  }
+  await client.updatePropertyFields(property.id, fields);
+  await env.DB.prepare("UPDATE properties SET fields = ? WHERE id = ?").bind(JSON.stringify(fields), property.id).run();
+  return { ...property, fields };
 }

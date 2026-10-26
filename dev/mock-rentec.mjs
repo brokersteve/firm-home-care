@@ -10,10 +10,11 @@ const properties = [
     state: "OR",
     zip: "97477",
     custom_fields: {
-      "HC Filter Size": "16x25x1",
-      "HC Filter Count": "1",
-      "HC Filter Months": "3",
-      "HC Filter Location": "Hallway ceiling return vent",
+      "HC Filter 1 Size": "16x25x1",
+      "HC Filter 1 Location": "Hallway ceiling return vent",
+      "HC Filter 2 Size": "20x20x1",
+      "HC Filter 2 Location": "Upstairs bedroom hallway",
+      "HC Filter Months": "2",
       "HC Smoke Detectors": "4",
       "HC CO Detectors": "1",
       "HC Detector Battery": "9V",
@@ -43,8 +44,11 @@ createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   let body = "";
   for await (const chunk of req) body += chunk;
-  if (body) posted.push({ path: url.pathname, body: JSON.parse(body) });
-  console.log(req.method, url.pathname + url.search, req.headers.authorization ?? "", body);
+  if (body) {
+    const json = (req.headers["content-type"] ?? "").includes("json");
+    posted.push({ method: req.method, path: url.pathname, body: json ? JSON.parse(body) : `${body.length} bytes (${req.headers["content-type"]?.split(";")[0]})` });
+  }
+  console.log(req.method, url.pathname + url.search, req.headers.authorization ?? "", body.slice(0, 300));
   const send = (data) => res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(data));
   const route = url.pathname.replace(/^\/api\/v3/, "");
   if (req.method === "GET" && route === "/properties") return send({ data: properties, next: false });
@@ -52,6 +56,14 @@ createServer(async (req, res) => {
   if (req.method === "GET" && route === "/leases") return send({ data: leases, next: false });
   if (req.method === "POST" && route === "/workorders") return send({ data: { id: 9000 + posted.length } });
   if (req.method === "POST" && route === "/messages") return send({ ok: true });
+  if (req.method === "POST" && route === "/files") return send({ data: { id: 7000 + posted.length } });
+  const put = route.match(/^\/properties\/(\d+)$/);
+  if (req.method === "PUT" && put) {
+    const p = properties.find((x) => String(x.property_id) === put[1]);
+    if (!p) return res.writeHead(404).end();
+    p.custom_fields = JSON.parse(body).custom_fields;
+    return send({ data: p });
+  }
   if (route === "/_posted") return send(posted);
   res.writeHead(404).end();
 }).listen(8788, () => console.log("Mock Rentec on http://localhost:8788/api/v3"));

@@ -13,7 +13,8 @@
   "author": "",
   "license": "UNLICENSED",
   "dependencies": {
-    "hono": "^4.13.14"
+    "hono": "^4.13.14",
+    "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261026.1",

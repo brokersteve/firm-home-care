@@ -1,5 +1,6 @@
 import { prettyDay } from "./dates";
 import type { Env, Property, Tenant } from "./env";
+import { filters } from "./fields";
 import type { ReminderKind } from "./schedule";
 
 export interface Email {
@@ -16,35 +17,38 @@ function field(property: Property, name: string, fallback: string): string {
 
 /** The words of each reminder. Kept plain so F.I.R.M. can reword them without touching anything else. */
 export function reminderEmail(kind: ReminderKind, tenant: Tenant, property: Property, dueDate: string): Email {
-  const count = Number.parseInt(field(property, "HC Filter Count", "1"), 10) || 1;
-  const size = field(property, "HC Filter Size", "");
   switch (kind) {
     case "welcome":
       return {
         subject: "Welcome home: your F.I.R.M. Home Care page",
         lines: [
           `Welcome to ${property.address}.`,
-          "Your Home Care page has the emergency guide for your home, local info, and quick troubleshooting for common problems.",
-          "We'll also email short reminders for things like air filters and smoke detector tests. Each takes a few minutes.",
+          "Your Home Care page has the emergency guide for your home, local info, and quick fixes to try before you submit a work order.",
+          "We'll also email short reminders for the routine care in your lease, like air filters and detector batteries. Each takes a few minutes.",
+          "Please return your Move-in Inspection Form within 10 days of move-in (lease section 1.9).",
         ],
         done: false,
       };
-    case "filter":
+    case "filter": {
+      const list = filters(property.fields);
       return {
-        subject: "Time to change your air filter",
+        subject: list.length > 1 ? "Time to change your air filters" : "Time to change your air filter",
         lines: [
-          `It's time to replace the air ${count > 1 ? `filters (${count} of them)` : "filter"}${size ? `, size ${size}` : ""}.`,
-          `You'll find ${count > 1 ? "them" : "it"} at: ${field(property, "HC Filter Location", "the return air vent")}.`,
-          "A clean filter keeps your heating and cooling working and your bills lower.",
+          list.length > 1
+            ? `It's time to replace your ${list.length} air filters:`
+            : "It's time to replace your air filter.",
+          ...list.map((f) => `${f.size || "Filter"}${f.location ? `: ${f.location}` : ""}`),
+          "Your lease (6.3) asks for a new filter at least every 60 days. A clean filter keeps your heating and cooling working and your power bill lower.",
         ],
         done: true,
       };
+    }
     case "detector_test":
       return {
         subject: "Monthly smoke and CO detector test",
         lines: [
           "Please press and hold the test button on each smoke and CO detector until it beeps.",
-          "If one doesn't beep, use the \"Something's wrong\" link and we'll take care of it.",
+          "If one doesn't beep, tell us right away (lease section 6.3) using the \"Something's wrong\" link.",
         ],
         done: true,
       };
@@ -59,11 +63,13 @@ export function reminderEmail(kind: ReminderKind, tenant: Tenant, property: Prop
       };
     case "fall_checklist":
       return {
-        subject: "Fall home checklist",
+        subject: "Fall and winter home checklist",
         lines: [
-          "Disconnect garden hoses from outside taps so they don't freeze.",
-          "Close any crawl space vents.",
-          "Let us know about drafty windows or doors before it gets cold.",
+          "Disconnect garden hoses from outside taps before the first freeze.",
+          "In freezing weather keep the heat at 55°F or higher, even when you're away, and let faucets drip on the coldest nights. In extreme cold, open sink cabinets on outside walls.",
+          "Rake and remove leaves. Gutter cleaning is the tenant's job under the lease; please hire a licensed professional rather than climbing a ladder.",
+          "Tell us if leaves or limbs are building up on the roof.",
+          "Going away for more than 7 days? Let us know in writing and leave the heat on.",
         ],
         done: true,
       };
@@ -71,9 +77,10 @@ export function reminderEmail(kind: ReminderKind, tenant: Tenant, property: Prop
       return {
         subject: "Spring home checklist",
         lines: [
-          "Switch the thermostat to Cool for a few minutes to make sure the AC runs.",
-          "Clear leaves from downspouts at ground level.",
-          "Let us know about any leaks or water stains you've noticed.",
+          "Switch the thermostat to Cool for a few minutes to make sure the AC runs before the heat arrives.",
+          "Trim tree limbs that hang within six feet of the ground, and keep the lawn mowed and beds tidy.",
+          "Clear downspouts at ground level, and have gutters cleaned by a licensed professional if needed.",
+          "Report any leaks, water stains or signs of pests through the tenant portal within 24 hours.",
         ],
         done: true,
       };
@@ -82,7 +89,8 @@ export function reminderEmail(kind: ReminderKind, tenant: Tenant, property: Prop
         subject: "Your renters insurance renews soon",
         lines: [
           `Our records show your renters insurance expires on ${prettyDay(tenant.insurance_expires ?? dueDate)}.`,
-          "When you renew, please upload the new policy in your Rentec tenant portal (Resident Connect) instead of emailing it.",
+          "Your lease (8.1) requires at least $100,000 of personal liability coverage, with First Investor Realty & Management, LLC listed as an additional insured or interested party.",
+          "When you renew, please upload the new policy in your Rentec tenant portal instead of emailing it.",
         ],
         done: false,
       };
