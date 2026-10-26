@@ -33,10 +33,14 @@ ol,ul{padding-left:20px}li{margin:6px 0}.quiet{color:var(--quiet);font-size:14px
 table{border-collapse:collapse;width:100%;font-size:14px}td,th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
 `;
 
-export function layout(title: string, body: Html, script = ""): Html {
+/** manifest: the tenant's own manifest URL, so "Add to Home Screen" opens their page. */
+export function layout(title: string, body: Html, script = "", manifest = ""): Html {
   return html`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title} · F.I.R.M. Home Care</title><style>${raw(STYLE)}</style></head>
+<title>${title} · F.I.R.M. Home Care</title><style>${raw(STYLE)}</style>
+<link rel="icon" href="/icon-192.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="FIRM Home"><meta name="theme-color" content="#1f5f8b">
+${manifest ? html`<link rel="manifest" href="${manifest}">` : ""}</head>
 <body><main><header><small>F.I.R.M. Home Care</small></header>${body}</main>${script ? raw(`<script>${script}</script>`) : ""}</body></html>`;
 }
 
@@ -127,8 +131,13 @@ ${tenant.move_in && daysBetween(tenant.move_in, formatDay(new Date())) <= 30
 <li>Contact us through the tenant portal or email; phone or text only when it's urgent.</li>
 </ul></div>
 <div class="card"><h2>Rent and repairs</h2><p class="quiet">Pay rent and see your lease and work orders in Resident Connect.</p>
-<a class="btn" href="${env.RESIDENT_CONNECT_URL}">Open Resident Connect</a></div>`,
+<a class="btn" href="${env.RESIDENT_CONNECT_URL}">Open Resident Connect</a></div>
+<div class="card"><h2>Put this on your home screen</h2>
+<p class="quiet">Keep this page one tap away, like an app. No download or login.</p>
+<p><strong>iPhone:</strong> in Safari, tap the Share button, then "Add to Home Screen".<br>
+<strong>Android:</strong> in Chrome, tap the ⋮ menu, then "Add to Home screen" or "Install app".</p></div>`,
     AUTOCOMPLETE,
+    `${base}/manifest.webmanifest`,
   );
 }
 

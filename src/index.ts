@@ -13,6 +13,7 @@ import { RentecClient } from "./rentec";
 import { getProperty, getTenant, saveHomeDetails } from "./store";
 import { syncFromRentec } from "./sync";
 import { inspectionRoutes } from "./inspection";
+import { ICON_180, ICON_192, ICON_512 } from "./icons";
 
 type Vars = { tenant: Tenant; property: Property; base: string };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -37,6 +38,27 @@ app.use("/t/:id/:sig/*", async (c, next) => {
 
 app.get("/t/:id/:sig", (c) => c.redirect(`${c.req.path}/`));
 app.get("/t/:id/:sig/", (c) => c.html(homePage(c.env, c.var.base, c.var.tenant, c.var.property)));
+
+// Home screen app: each tenant's manifest starts at their own page.
+app.get("/t/:id/:sig/manifest.webmanifest", (c) =>
+  c.json(
+    {
+      name: "F.I.R.M. Home Care",
+      short_name: "FIRM Home",
+      start_url: `${c.var.base}/`,
+      scope: `${c.var.base}/`,
+      display: "standalone",
+      background_color: "#1f5f8b",
+      theme_color: "#1f5f8b",
+      icons: [
+        { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+      ],
+    },
+    200,
+    { "Content-Type": "application/manifest+json" },
+  ),
+);
 
 app.get("/t/:id/:sig/help", (c) => {
   const q = (c.req.query("q") ?? "").trim().slice(0, 200);
@@ -166,6 +188,15 @@ app.post("/t/:id/:sig/report/:guide", async (c) => {
     ),
   );
 });
+
+const png = (b64: string) => () =>
+  new Response(Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0)), {
+    headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=604800" },
+  });
+app.get("/icon-512.png", png(ICON_512));
+app.get("/icon-192.png", png(ICON_192));
+app.get("/apple-touch-icon.png", png(ICON_180));
+app.get("/favicon.ico", png(ICON_192));
 
 // Photo links in work orders and inspection reports. Keys are random, so a link can't be guessed.
 app.get("/photo/*", (c) => servePhoto(c.env, c.req.path.slice("/photo/".length)));

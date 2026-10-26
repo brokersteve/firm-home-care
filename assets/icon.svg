@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" fill="#1f5f8b"/>
+<path d="M120 236 L256 128 L392 236" fill="none" stroke="#fff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="318" y="138" width="34" height="62" fill="#fff"/>
+<text x="256" y="334" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="112" fill="#fff" letter-spacing="2">FIRM</text>
+<rect x="150" y="364" width="212" height="12" rx="6" fill="#f2b33d"/>
+</svg>
