@@ -32,7 +32,7 @@ export async function sendDueReminders(env: Env, today: string, client = RentecC
         {
           home,
           done: email.done ? await doneLink(env.APP_URL, env.LINK_SECRET, tenant.id, kind, dueDate) : undefined,
-          insurance: kind === "insurance" ? env.RESIDENT_CONNECT_URL : undefined,
+          insurance: kind === "insurance" || kind === "insurance_expired" ? env.RESIDENT_CONNECT_URL : undefined,
         },
         env,
       );

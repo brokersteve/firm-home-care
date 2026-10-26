@@ -90,6 +90,16 @@ export function reminderEmail(kind: ReminderKind, tenant: Tenant, property: Prop
         ],
         done: false,
       };
+    case "insurance_expired":
+      return {
+        subject: "Your renters insurance has expired",
+        lines: [
+          `We don't have a new renters insurance policy on file for you, and the last one expired on ${prettyDay(tenant.insurance_expires ?? dueDate)}.`,
+          "Your lease (8.1) requires coverage the whole time you live in the home: at least $100,000 of personal liability, with First Investor Realty & Management, LLC listed as an additional insured or interested party.",
+          "Please upload your current policy in your Rentec tenant portal today. It takes a minute from your phone.",
+        ],
+        done: false,
+      };
   }
 }
 

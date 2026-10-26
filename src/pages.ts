@@ -1,6 +1,6 @@
 import { html, raw } from "hono/html";
 import type { HtmlEscapedString } from "hono/utils/html";
-import { daysBetween, formatDay } from "./dates";
+import { daysBetween, formatDay, prettyDay } from "./dates";
 import { DIAGRAMS } from "./diagrams";
 import type { Env, Property, Tenant } from "./env";
 import { filters } from "./fields";
@@ -90,6 +90,22 @@ function infoList(property: Property, rows: [string, string][]): Html {
   return html`<dl>${filled.map(([label, field]) => html`<dt>${label}</dt><dd>${property.fields[field]}</dd>`)}</dl>`;
 }
 
+/** Renters insurance: when it expires (as Rentec has it) and where to upload the new policy. */
+function insuranceCard(env: Env, tenant: Tenant): Html {
+  const expires = tenant.insurance_expires;
+  const left = expires ? daysBetween(formatDay(new Date()), expires) : null;
+  const status =
+    left === null
+      ? html`<p>We don't have your renters insurance policy on file.</p>`
+      : left < 0
+        ? html`<p><strong>Your policy expired on ${prettyDay(expires!)}.</strong> Please upload your current policy today.</p>`
+        : html`<p>Your policy on file expires on <strong>${prettyDay(expires!)}</strong>.${left <= 30 ? " When you renew, upload the new policy." : ""}</p>`;
+  const urgent = left === null || left <= 30;
+  return html`<div class="card${urgent ? " alert" : ""}"><h2>Renters insurance</h2>${status}
+<p class="quiet">Your lease (8.1) requires at least $100,000 of personal liability coverage, with First Investor Realty &amp; Management, LLC listed as an additional insured or interested party. Upload proof in Resident Connect; no need to email it.</p>
+<a class="btn${urgent ? " primary" : ""}" href="${env.RESIDENT_CONNECT_URL}">Upload my policy</a></div>`;
+}
+
 export function homePage(env: Env, base: string, tenant: Tenant, property: Property): Html {
   const filterList = filters(property.fields);
   return layout(
@@ -132,6 +148,7 @@ ${tenant.move_in && daysBetween(tenant.move_in, formatDay(new Date())) <= 30
 </ul></div>
 <div class="card"><h2>Rent and repairs</h2><p class="quiet">Pay rent and see your lease and work orders in Resident Connect.</p>
 <a class="btn" href="${env.RESIDENT_CONNECT_URL}">Open Resident Connect</a></div>
+${insuranceCard(env, tenant)}
 <div class="card"><h2>Put this on your home screen</h2>
 <p class="quiet">Keep this page one tap away, like an app. No download or login.</p>
 <p><strong>iPhone:</strong> in Safari, tap the Share button, then "Add to Home Screen".<br>

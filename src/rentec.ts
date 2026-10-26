@@ -68,6 +68,27 @@ export class RentecClient {
   }
 
   /** Reads every page of a list endpoint. Handles a bare array or {data, next/page} envelopes. */
+  /**
+   * What Rentec actually returns: the field names on the first record of each list, with values hidden.
+   * Shown on the admin "Check Rentec" page so the mappers below can be confirmed against the real API.
+   */
+  async describe(): Promise<{ name: string; ok: boolean; count: number; fields: string[]; error?: string }[]> {
+    const out = [];
+    for (const [name, path] of Object.entries({ Properties: PATHS.properties, Tenants: PATHS.tenants, Leases: PATHS.leases, "Work orders": PATHS.workOrders })) {
+      try {
+        const rows = await this.list(path);
+        const keys = (row: Json, prefix = ""): string[] =>
+          Object.entries(row).flatMap(([k, v]) =>
+            v && typeof v === "object" && !Array.isArray(v) ? keys(v as Json, `${prefix}${k}.`) : [`${prefix}${k}`],
+          );
+        out.push({ name, ok: true, count: rows.length, fields: rows[0] ? keys(rows[0]) : [] });
+      } catch (err) {
+        out.push({ name, ok: false, count: 0, fields: [], error: String(err).slice(0, 300) });
+      }
+    }
+    return out;
+  }
+
   private async list(path: string): Promise<Json[]> {
     const rows: Json[] = [];
     for (let page = 1; page <= 100; page++) {

@@ -238,6 +238,22 @@ app.use("/admin/*", async (c, next) => {
   await next();
 });
 app.get("/admin/", async (c) => c.html(await adminPage(c.env)));
+// Shows which fields Rentec returns (names only), to confirm the API mapping before the pilot.
+app.get("/admin/rentec-check", async (c) => {
+  const results = await RentecClient.fromEnv(c.env).describe();
+  return c.html(
+    layout(
+      "Check Rentec",
+      html`<h1>Check the Rentec connection</h1>
+<p class="quiet">Field names Rentec sends back for the first record of each list. No tenant details are shown. Send a screenshot of this page to Claude to confirm the app reads the right fields.</p>
+${results.map(
+  (r) => html`<div class="card${r.ok ? "" : " alert"}"><h2>${r.name}</h2>
+${r.ok ? html`<p class="quiet">${r.count} records</p><p style="font-family:monospace;font-size:13px">${r.fields.join(", ") || "(empty list)"}</p>` : html`<p>${r.error}</p>`}</div>`,
+)}<a class="quiet" href="/admin/">Back to admin</a>`,
+    ),
+  );
+});
+
 app.post("/admin/run", async (c) => {
   await runNightly(c.env);
   return c.redirect("/admin/", 303);

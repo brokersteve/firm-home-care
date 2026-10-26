@@ -56,6 +56,11 @@ describe("dueReminders", () => {
     expect(kinds(tenant({ insurance_expires: "2026-08-31" }), {}, "2026-08-01")).toContain("insurance@2026-08-01");
   });
 
+  it("sends a second insurance reminder the day after it lapses", () => {
+    expect(kinds(tenant({ insurance_expires: "2026-08-31" }), {}, "2026-09-01")).toContain("insurance_expired@2026-09-01");
+    expect(kinds(tenant({ insurance_expires: "2026-08-31" }), {}, "2026-08-31").some((k) => k.startsWith("insurance_expired"))).toBe(false);
+  });
+
   it("sends nothing dated before move-in", () => {
     expect(kinds(tenant({ move_in: "2026-10-03" }), {}, "2026-10-04")).toEqual(["welcome@2026-10-04"]);
   });
