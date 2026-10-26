@@ -48,13 +48,18 @@ ${outcomes.results.map((r) => html`<tr><td>${r.guide_id}</td><td>${r.fixed}</td>
 }
 
 /** The phone form an inspector fills in at the property. Saving writes the fields to Rentec. */
-export function homeDetailsPage(property: Property, saved: boolean) {
+export function homeDetailsPage(
+  property: Property,
+  saved: boolean,
+  nav: { action?: string; back: string; backLabel: string; button: string } = { back: "/admin/", backLabel: "Back to admin", button: "Save to Rentec" },
+) {
   const sections = [...new Set(FIELDS.map((f) => f.section))];
   return layout(
     "Home details",
     html`<h1>Home details</h1><p class="quiet">${property.address}</p>
 ${saved ? html`<div class="card note"><p>Saved to Rentec.</p></div>` : ""}
-<form method="post">
+<p class="quiet">Fields marked * are needed for the tenant's Home Care page. Saving writes them to the property in Rentec.</p>
+<form method="post"${nav.action ? html` action="${nav.action}"` : ""}>
 ${sections.map(
   (section) => html`<div class="card"><h2>${section}</h2>
 ${FIELDS.filter((f) => f.section === section).map(
@@ -63,7 +68,7 @@ ${FIELDS.filter((f) => f.section === section).map(
 ${f.choices ? html`<datalist id="${f.name}-choices">${f.choices.map((c) => html`<option value="${c}">`)}</datalist>` : ""}`,
 )}</div>`,
 )}
-<button class="btn primary">Save to Rentec</button></form>
-<a class="quiet" href="/admin/">Back to admin</a>`,
+<button class="btn primary">${nav.button}</button></form>
+<a class="quiet" href="${nav.back}">${nav.backLabel}</a>`,
   );
 }

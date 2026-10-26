@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import type { Env, Property, Tenant } from "./env";
+import { FIELDS } from "./fields";
 import type { Inspection } from "./inspection";
 import { KIND_LABELS } from "./inspection-template";
 import { photoKey } from "./photos";
@@ -119,6 +120,21 @@ export async function buildInspectionPdf(env: Env, insp: Inspection, property: P
   if (poor.length) {
     w.text("Items in poor condition", { size: 12, bold: true, color: POOR });
     for (const p of poor) w.text(`- ${p}`, { x: PAGE.margin + 8 });
+    w.y -= 8;
+  }
+
+  if (insp.details && Object.keys(insp.details).length) {
+    w.text("Home details", { size: 13, bold: true });
+    w.rule();
+    for (const f of FIELDS.filter((f) => insp.details![f.name])) {
+      const startY = w.y;
+      const startPage = w.page;
+      w.text(f.label, { width: 200 });
+      const labelBottom = w.y;
+      if (w.page === startPage) w.y = startY;
+      w.text(insp.details[f.name]!, { x: PAGE.margin + 210 });
+      w.y = Math.min(w.y, labelBottom);
+    }
     w.y -= 8;
   }
 

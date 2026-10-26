@@ -1,6 +1,7 @@
 import { Hono, type Context } from "hono";
 import { html } from "hono/html";
-import type { Env, Property, Tenant } from "./env";
+import { homeDetailsPage } from "./admin";
+import type { Env, Property, PropertyFields, Tenant } from "./env";
 import {
   CONDITIONS,
   KIND_LABELS,
@@ -13,7 +14,7 @@ import { layout } from "./pages";
 import { SHRINK_PHOTOS_SCRIPT, savePhoto } from "./photos";
 import { buildInspectionPdf } from "./report";
 import { RentecClient } from "./rentec";
-import { getProperty, listProperties } from "./store";
+import { getProperty, listProperties, saveHomeDetails } from "./store";
 
 export interface Inspection {
   id: string;
@@ -28,15 +29,17 @@ export interface Inspection {
   completed_at: string | null;
   report_key: string | null;
   uploaded_to_rentec: number;
+  /** The home details saved during this inspection, for the report. */
+  details: PropertyFields | null;
 }
 
-type Row = Omit<Inspection, "rooms"> & { rooms: string };
+type Row = Omit<Inspection, "rooms" | "details"> & { rooms: string; details: string | null };
 type Vars = { tenant?: Tenant; property?: Property; base?: string };
 type C = Context<{ Bindings: Env; Variables: Vars }>;
 
 async function load(env: Env, id: string): Promise<Inspection | null> {
   const row = await env.DB.prepare("SELECT * FROM inspections WHERE id = ?").bind(id).first<Row>();
-  return row ? { ...row, rooms: JSON.parse(row.rooms) } : null;
+  return row ? { ...row, rooms: JSON.parse(row.rooms), details: row.details ? JSON.parse(row.details) : null } : null;
 }
 
 async function saveRooms(env: Env, i: Inspection): Promise<void> {
@@ -165,9 +168,9 @@ ${insp.uploaded_to_rentec ? " Saved to the property's files in Rentec." : ""}</p
 <div class="card">${insp.rooms.map(
   (r, i) => html`<a class="btn ${roomDone(r) ? "" : "primary"}" href="${root}/room/${i}">${roomDone(r) ? "✓ " : ""}${r.name}</a>`,
 )}</div>
-${s.who === "staff" && insp.status === "draft"
-  ? html`<div class="card"><h2>Home details</h2><p class="quiet">Water shutoff, breaker panel, filters, trash day: saved to Rentec.</p>
-<a class="btn" href="/admin/home/${encodeURIComponent(insp.property_id)}">Fill in home details</a></div>`
+${s.who === "staff"
+  ? html`<div class="card"><h2>Home details</h2><p class="quiet">Filters, shutoffs, breaker panel, trash day. Saved to the property in Rentec and shown on the tenant's Home Care page.</p>
+${insp.status === "draft" ? html`<a class="btn ${insp.details ? "" : "primary"}" href="${root}/details">${insp.details ? "✓ Home details saved" : "Fill in home details"}</a>` : ""}</div>`
   : ""}
 ${insp.status === "draft"
   ? html`<form method="post" action="${root}/finish" class="card"><h2>Finish</h2>
@@ -230,6 +233,24 @@ ${locked ? "" : html`<button class="btn primary">Save ${r + 1 < insp.rooms.lengt
     await saveRooms(c.env, insp);
     const root = `${scope(c).root}/${insp.id}`;
     return c.redirect(r + 1 < insp.rooms.length ? `${root}/room/${r + 1}` : root, 303);
+  });
+
+  // Home details inside a staff inspection: the same fields as /admin/home, saved to Rentec straight away.
+  inspectionRoutes.get(`${prefix}/:iid/details`, async (c) => {
+    const insp = await find(c);
+    const property = insp && scope(c).who === "staff" ? await getProperty(c.env, insp.property_id) : null;
+    if (!insp || !property) return c.text("Inspection not found", 404);
+    const root = `${scope(c).root}/${insp.id}`;
+    return c.html(homeDetailsPage(property, false, { back: root, backLabel: "Back to the inspection", button: "Save to Rentec and continue" }));
+  });
+
+  inspectionRoutes.post(`${prefix}/:iid/details`, async (c) => {
+    const insp = await find(c);
+    const property = insp && scope(c).who === "staff" && insp.status === "draft" ? await getProperty(c.env, insp.property_id) : null;
+    if (!insp || !property) return c.text("Inspection not found", 404);
+    const saved = await saveHomeDetails(c.env, property, await c.req.parseBody());
+    await c.env.DB.prepare("UPDATE inspections SET details = ? WHERE id = ?").bind(JSON.stringify(saved.fields), insp.id).run();
+    return c.redirect(`${scope(c).root}/${insp.id}`, 303);
   });
 
   inspectionRoutes.post(`${prefix}/:iid/finish`, async (c) => {
