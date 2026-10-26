@@ -1,9 +1,31 @@
 import type { Env, Property, Tenant } from "./env";
 import { RentecClient, type RentecLease, type RentecTenant } from "./rentec";
 
-export function pilotIds(env: Pick<Env, "PILOT_PROPERTY_IDS">): Set<string> | null {
+const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(Boolean);
+
+/**
+ * True when a property has the same house number and street name as a short address like "619 Flynwood Pl".
+ * Street suffixes and city are ignored, and "Stone Garden" also matches "Stonegarden".
+ */
+export function sameAddress(address: string, p: Pick<Property, "address" | "name">): boolean {
+  const [num, ...rest] = words(address);
+  const street = rest.find((w) => !/^\d/.test(w));
+  if (!num || !street) return false;
+  const w = words(`${p.address} ${p.name}`);
+  return w.includes(num) && w.join("").includes(street);
+}
+
+/** The pilot homes, as short addresses separated by ";" (PILOT_ADDRESSES). */
+export function pilotAddresses(env: Pick<Env, "PILOT_ADDRESSES">): string[] {
+  return (env.PILOT_ADDRESSES ?? "").split(";").map((s) => s.trim()).filter(Boolean);
+}
+
+/** Whether a property is in the pilot, by Rentec id or by address. With neither list set, every property is. */
+export function inPilot(env: Pick<Env, "PILOT_PROPERTY_IDS" | "PILOT_ADDRESSES">, p: Property): boolean {
   const ids = env.PILOT_PROPERTY_IDS.split(",").map((s) => s.trim()).filter(Boolean);
-  return ids.length ? new Set(ids) : null;
+  const addresses = pilotAddresses(env);
+  if (!ids.length && !addresses.length) return true;
+  return ids.includes(p.id) || addresses.some((a) => sameAddress(a, p));
 }
 
 /** Joins Rentec tenants with their most recent lease. A tenant with no lease on file is left out. */
@@ -44,8 +66,7 @@ export async function syncFromRentec(env: Env, today: string, client = RentecCli
   const now = new Date().toISOString();
   const run = await env.DB.prepare("INSERT INTO sync_runs (started_at) VALUES (?) RETURNING id").bind(now).first<{ id: number }>();
   try {
-    const pilot = pilotIds(env);
-    const properties: Property[] = (await client.properties()).filter((p) => p.id && (!pilot || pilot.has(p.id)));
+    const properties: Property[] = (await client.properties()).filter((p) => p.id && inPilot(env, p));
     const ids = new Set(properties.map((p) => p.id));
     const tenants = buildTenants(await client.tenants(), await client.leases(), ids, today);
 

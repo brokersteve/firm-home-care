@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { RentecClient, customFields, toDay, toLease, toProperty, toTenant } from "../src/rentec";
-import { buildTenants } from "../src/sync";
+import { buildTenants, inPilot } from "../src/sync";
 
 describe("Rentec mappers", () => {
   it("reads dates in the formats Rentec may use", () => {
@@ -62,5 +62,25 @@ describe("RentecClient", () => {
     const client = new RentecClient("https://rentec.test/api/v3", "k", fake);
     expect(await client.createWorkOrder({ propertyId: "12", tenantId: "1", title: "Toilet", description: "Tried plunging" })).toBe("555");
     expect(sent).toMatchObject({ property_id: "12", renter_id: "1", title: "Toilet" });
+  });
+});
+
+describe("pilot homes by address", () => {
+  const home = (address: string) => ({ id: "1", name: address, address, fields: {} });
+  const env = { PILOT_PROPERTY_IDS: "", PILOT_ADDRESSES: "619 Flynwood Pl; 12474 Stone Garden; 5405 Hilltop" };
+
+  it("matches on house number and street, whatever the suffix or city", () => {
+    expect(inPilot(env, home("619 Flynwood Place, Charlotte, NC 28213"))).toBe(true);
+    expect(inPilot(env, home("12474 Stonegarden Dr"))).toBe(true);
+    expect(inPilot(env, home("5405 Hilltop Rd Unit B"))).toBe(true);
+  });
+
+  it("leaves out other homes, including the same number on another street", () => {
+    expect(inPilot(env, home("619 Oakwood Pl"))).toBe(false);
+    expect(inPilot(env, home("6190 Flynwood Pl"))).toBe(false);
+  });
+
+  it("includes every home when no pilot list is set", () => {
+    expect(inPilot({ PILOT_PROPERTY_IDS: "", PILOT_ADDRESSES: "" }, home("1 Any St"))).toBe(true);
   });
 });

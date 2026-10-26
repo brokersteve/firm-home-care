@@ -8,6 +8,8 @@ export interface Env {
   EMERGENCY_PHONE: string;
   RESIDENT_CONNECT_URL: string;
   PILOT_PROPERTY_IDS: string;
+  /** The pilot homes by address, separated by ";". Used alongside PILOT_PROPERTY_IDS. */
+  PILOT_ADDRESSES: string;
   RENTEC_API_KEY: string;
   RESEND_API_KEY: string;
   LINK_SECRET: string;

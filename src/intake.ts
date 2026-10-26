@@ -3,6 +3,7 @@
 import type { Property, PropertyFields } from "./env";
 import { FIELDS } from "./fields";
 import type { RoomChoices } from "./inspection-template";
+import { sameAddress } from "./sync";
 
 export interface Intake {
   address: string;
@@ -64,15 +65,8 @@ export function parseIntake(text: string): Intake {
   };
 }
 
-const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(Boolean);
-
 /** The one property whose address starts with the same house number and street name, or null. */
 export function matchProperty(address: string, properties: Property[]): Property | null {
-  const [num, street] = words(address);
-  if (!num || !street) return null;
-  const hits = properties.filter((p) => {
-    const w = words(`${p.address} ${p.name}`);
-    return w.includes(num) && w.includes(street);
-  });
+  const hits = properties.filter((p) => sameAddress(address, p));
   return hits.length === 1 ? hits[0]! : null;
 }

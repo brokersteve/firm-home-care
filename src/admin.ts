@@ -4,6 +4,7 @@ import type { Env } from "./env";
 import { layout } from "./pages";
 import { FIELDS, REQUIRED_FIELDS } from "./fields";
 import { listProperties } from "./store";
+import { pilotAddresses, sameAddress } from "./sync";
 
 export async function adminPage(env: Env) {
   const properties = await listProperties(env);
@@ -24,6 +25,9 @@ export async function adminPage(env: Env) {
     "SELECT guide_id, SUM(outcome = 'fixed') AS fixed, SUM(outcome = 'work_order') AS work_orders FROM guide_outcomes GROUP BY guide_id ORDER BY guide_id",
   ).all<{ guide_id: string; fixed: number; work_orders: number }>();
 
+  // Pilot addresses with no matching home in Rentec: usually a typo, or a different spelling in Rentec.
+  const notFound = pilotAddresses(env).filter((a) => !properties.some((p) => sameAddress(a, p)));
+
   return layout(
     "Admin",
     html`<h1>Home Care admin</h1>
@@ -39,7 +43,10 @@ ${properties.map((p) => {
   const t = byProperty.get(p.id);
   const missing = REQUIRED_FIELDS.filter((f) => !p.fields[f]);
   return html`<tr><td><a href="/admin/home/${encodeURIComponent(p.id)}">${p.name}</a></td><td>${t?.n ?? 0}${t?.no_email ? html` (${t.no_email} without email)` : ""}</td><td>${missing.length ? missing.join(", ") : "None"}</td></tr>`;
-})}</table></div>
+})}</table>
+${notFound.length && lastSync
+  ? html`<p><strong>Not found in Rentec:</strong> ${notFound.join("; ")}. Check the spelling in PILOT_ADDRESSES against Rentec.</p>`
+  : ""}</div>
 <div class="card"><h2>Reminders</h2><table><tr><th>Reminder</th><th>Sent</th><th>Done</th></tr>
 ${reminders.results.map((r) => html`<tr><td>${r.kind}</td><td>${r.sent}</td><td>${r.done}</td></tr>`)}</table></div>
 <div class="card"><h2>Troubleshooting</h2><table><tr><th>Guide</th><th>Fixed by tenant</th><th>Work orders</th></tr>

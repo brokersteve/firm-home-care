@@ -52,7 +52,7 @@ npm run typecheck
    (https://secure.rentecdirect.com/api/v3/docs/, visible when logged in).
 2. Create the Cloudflare D1 database (`wrangler d1 create firm-home-care`) and put its ID in `wrangler.toml`,
    and the photo bucket (`wrangler r2 bucket create firm-home-care-photos`).
-3. Set `APP_URL`, `EMAIL_FROM`, `EMERGENCY_PHONE`, `RESIDENT_CONNECT_URL` and `PILOT_PROPERTY_IDS` in `wrangler.toml`.
+3. Set `APP_URL`, `EMAIL_FROM`, `EMERGENCY_PHONE`, `RESIDENT_CONNECT_URL` and the pilot homes (`PILOT_ADDRESSES`, or `PILOT_PROPERTY_IDS`) in `wrangler.toml`.
 4. Set the secrets: `wrangler secret put RENTEC_API_KEY` (and `RESEND_API_KEY`, `LINK_SECRET`, `ADMIN_TOKEN`).
 5. `npm run db:migrate` then `npm run deploy`.
 

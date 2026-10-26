@@ -4,3 +4,6 @@ LINK_SECRET=dev-link-secret
 ADMIN_TOKEN=dev-admin
 RENTEC_BASE_URL=http://localhost:8788/api/v3
 APP_URL=http://localhost:8787
+
+# Empty = every property (the mock Rentec has only test homes)
+PILOT_ADDRESSES=

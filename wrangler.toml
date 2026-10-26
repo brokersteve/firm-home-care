@@ -25,6 +25,8 @@ EMERGENCY_PHONE = "704-430-6193"
 RESIDENT_CONNECT_URL = "https://secure.rentecdirect.com/tenants/"
 # Comma-separated Rentec property IDs in the pilot. Empty = all properties.
 PILOT_PROPERTY_IDS = ""
+# The 10 pilot homes (Steve, 2026-10-26). Matched on house number and street name.
+PILOT_ADDRESSES = "619 Flynwood Pl; 425 Westham Ridge; 1620 Starbrook Dr; 2019 Stargrass; 3129 Kalamath; 5405 Hilltop; 7531 April Mist; 11312 Walland; 12474 Stone Garden; 15469 Asterwind"
 
 # Secrets (set with `wrangler secret put NAME`, never committed):
 #   RENTEC_API_KEY   the "FIRM Home Care" key from Rentec
