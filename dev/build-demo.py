@@ -17,7 +17,7 @@ for p, s, h, l in d:
 for k, f in [("/admin/workorders", "admin__admin_workorders.html"), ("/admin/workorders/1", "admin__admin_workorders_1.html"),
              ("/admin/workorders/2", "admin__admin_workorders_2.html"), ("/admin/vendors", "admin__admin_vendors.html")]:
     h = open(DIR + f).read(); pages[k] = {"t": title_of(h), "b": body_of(h)}
-for k, f in [("__fixed", "fixed.html"), ("__submitted", "submitted.html")]:
+for k, f in [("__fixed", "fixed.html"), ("__submitted", "submitted.html"), ("__start", "start.html")]:
     h = open(DIR + f).read(); pages[k] = {"t": title_of(h), "b": body_of(h)}
 pages["__submitted"]["b"] = pages["__submitted"]["b"].replace("</main>", '<div class="card note"><p><strong>Demo:</strong> see what F.I.R.M. staff do next. A sample work order like this one is waiting to be sent to a vendor.</p><a class="btn primary" href="/admin/workorders/2">Open it as staff</a></div></main>', 1)
 assert "Open it as staff" in pages["__submitted"]["b"]
@@ -35,6 +35,7 @@ script = r'''
   function keyOf(href){
     var u=href.replace(/^https?:\/\/[^/]+/,'').replace(/&amp;/g,'&').split('#')[0];
     if(u==='#tenant') return '';
+    if(u==='#start') return '__start';
     if(u.indexOf('/admin')===0){ u=u.split('?')[0]; return (u in pages)?u:'/admin/workorders'; }
     if(u.indexOf(BASE)!==0) return null; return u.slice(BASE.length+1);
   }
@@ -56,6 +57,7 @@ script = r'''
     if(/\/fixed$/.test(action)){ show('__fixed',true); return; }
     if(/\/insurance$/.test(action)){ var n=f.querySelector('.demo-note')||document.createElement('p'); n.className='demo-note'; n.textContent='In the real app this saves the date and the reminders follow it. The demo does not save it.'; f.appendChild(n); return; }
     if(/\/report\//.test(action)){ show('__submitted',true); return; }
+    if(action==='/start'){ var m=f.querySelector('.demo-note')||document.createElement('p'); m.className='demo-note'; m.textContent='In the real app, a tenant whose cell or email matches gets their link by text or email right away. The demo does not send anything.'; f.appendChild(m); return; }
     var sel=f.querySelector('#vendor');
     if(/^\/admin\/workorders\/\d+$/.test(current)&&sel){
       var opt=sel.options[sel.selectedIndex], id=current.split('/').pop(), isNew=sel.value==='new';
@@ -82,7 +84,7 @@ html = f'''<title>FIRM Home Care Demo</title>
 .demo-bar a{{color:var(--brand);font-weight:600}}
 .demo-note{{background:var(--tint);border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}}
 </style>
-<div class="demo-bar"><strong>Demo</strong> with a sample home and tenant, and your vendor list. Nothing you enter is saved or sent.<br><a href="#tenant">Tenant view</a> &middot; <a href="/admin/workorders">Staff view: work orders</a></div>
+<div class="demo-bar"><strong>Demo</strong> with a sample home and tenant, and your vendor list. Nothing you enter is saved or sent.<br><a href="#start">Start page</a> &middot; <a href="#tenant">Tenant page</a> &middot; <a href="/admin/workorders">Staff: work orders</a></div>
 <div id="app"></div>
 <script id="pages" type="application/json">{blob}</script>
 <script>{script}</script>

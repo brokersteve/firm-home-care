@@ -19,7 +19,7 @@ export function reminderEmail(kind: ReminderKind, tenant: Tenant, property: Prop
         subject: "Welcome home: your F.I.R.M. Home Care page",
         lines: [
           `Welcome to ${property.address}.`,
-          "Your Home Care page has the emergency guide for your home, local info, and quick fixes to try before you submit a work order.",
+          "Your Home Care page has the emergency guide for your home, local info, and quick fixes to try before you submit a work order. Open it on your phone and add it to your home screen once: the FIRM icon then opens it in one tap.",
           "We'll also email short reminders for the routine care in your lease, like air filters and detector batteries. Each takes a few minutes.",
           "Please return your Move-in Inspection Form within 10 days of move-in (lease section 1.9).",
           "On your Home Care page, please enter the date your renters insurance policy ends, so we can remind you before it renews.",

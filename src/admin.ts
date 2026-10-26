@@ -6,8 +6,10 @@ import { FIELDS, REQUIRED_FIELDS } from "./fields";
 import { listProperties } from "./store";
 import { pilotAddresses, sameAddress } from "./sync";
 
-export async function adminPage(env: Env) {
+export async function adminPage(env: Env, invite = "") {
   const properties = await listProperties(env);
+  const uninvited =
+    (await env.DB.prepare("SELECT COUNT(*) AS n FROM tenants WHERE active = 1 AND invited_at IS NULL AND (email IS NOT NULL OR phone IS NOT NULL)").first<{ n: number }>())?.n ?? 0;
   const tenants = await env.DB.prepare(
     "SELECT property_id, COUNT(*) AS n, SUM(email IS NULL) AS no_email FROM tenants WHERE active = 1 GROUP BY property_id",
   ).all<{ property_id: string; n: number; no_email: number }>();
@@ -32,6 +34,14 @@ export async function adminPage(env: Env) {
     "Admin",
     html`<h1>Home Care admin</h1>
 <a class="btn primary" href="/admin/workorders">Work orders</a> <a class="btn" href="/admin/tenants">Tenants</a> <a class="btn" href="/admin/intake">Paste home details</a> <a class="btn" href="/admin/inspect">Inspections</a> <a class="btn" href="/admin/rentec-check">Check Rentec connection</a>
+${invite ? html`<div class="card note"><p>${invite}</p></div>` : ""}
+<div class="card"><h2>Get tenants onto Home Care</h2>
+<p class="quiet">Tenants add the page to their home screen once; the FIRM icon opens it after that. Lost it or new phone? They go to ${env.APP_URL.replace(/^https?:\/\//, "")} and enter their cell or email to get their link again.</p>
+${uninvited
+  ? html`<form method="post" action="/admin/invite"><p>${uninvited} current tenant${uninvited === 1 ? " hasn't" : "s haven't"} been invited yet. Each gets an email and a text with their link and the add-to-home-screen steps.</p>
+<label><input type="checkbox" required> Yes, send the invites now</label><button class="btn primary">Invite ${uninvited} tenant${uninvited === 1 ? "" : "s"}</button></form>`
+  : html`<p>Every current tenant has been invited. New tenants get the welcome email the day after move-in.</p>`}
+<a class="btn" href="/admin/stickers">Print QR stickers for each home</a></div>
 <div class="card"><h2>Last Rentec sync</h2>
 ${lastSync
   ? html`<p>${lastSync.started_at.slice(0, 16).replace("T", " ")} UTC: ${lastSync.properties ?? 0} properties, ${lastSync.tenants ?? 0} tenants

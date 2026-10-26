@@ -12,7 +12,7 @@ type Html = HtmlEscapedString | Promise<HtmlEscapedString>;
 const STYLE = `
 :root{--ink:#1d2329;--quiet:#5b6670;--line:#d9dee3;--brand:#1f5f8b;--bg:#f6f7f9;--card:#fff;--alert:#b3261e;--tint:#e8f0f6}
 @media (prefers-color-scheme:dark){:root{--ink:#e8ebee;--quiet:#a3adb6;--line:#38414a;--brand:#7cb8e4;--bg:#14181c;--card:#1d2328;--alert:#f2b8b5;--tint:#22303b}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,sans-serif}
+*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,sans-serif}
 main{max-width:560px;margin:0 auto;padding:16px}
 header{padding:8px 0 4px}header small{color:var(--quiet)}
 h1{font-size:22px;margin:4px 0 12px}h2{font-size:17px;margin:0 0 8px}
@@ -46,7 +46,7 @@ ${manifest ? html`<link rel="manifest" href="${manifest}">` : ""}</head>
 <body><main><header><small>F.I.R.M. Home Care</small></header>${body}</main>${script ? raw(`<script>${script}</script>`) : ""}</body></html>`;
 }
 
-function emergencyCard(env: Env): Html {
+export function emergencyCard(env: Env): Html {
   return html`<div class="card alert"><h2>Emergency?</h2>
 <p>Fire, gas smell or crime: call 911 first. Then, or for flooding, no heat in freezing weather or anything unsafe, call our emergency maintenance line.</p>
 <a class="btn danger" href="tel:${env.EMERGENCY_PHONE}">Call ${env.EMERGENCY_PHONE}</a></div>`;
@@ -121,6 +121,12 @@ export function homePage(env: Env, base: string, tenant: Tenant, property: Prope
     "Home",
     html`<h1>Hi ${tenant.first_name}</h1><p class="quiet">${property.address}</p>
 ${emergencyCard(env)}
+<div class="card note" id="a2hs"><h2>Put FIRM on your home screen</h2>
+<p>Do this once and the FIRM icon opens this page in one tap, even years from now. No download or password.</p>
+<button class="btn primary" id="a2hs-install" hidden>Add to home screen</button>
+<p id="a2hs-steps"><strong>iPhone:</strong> in Safari, tap the Share button <span aria-hidden="true">(the square with an arrow)</span>, then <strong>Add to Home Screen</strong>.<br>
+<strong>Android:</strong> in Chrome, tap the ⋮ menu, then <strong>Add to Home screen</strong> or <strong>Install app</strong>.</p>
+<p class="quiet">Lost the icon or got a new phone? Go to ${env.APP_URL.replace(/^https?:\/\//, "")} and we'll send your link again.</p></div>
 <div class="card"><h2>Something not working?</h2>
 <p class="quiet">Before you submit a work order, let's check a few quick things. Many problems take two minutes to fix.</p>
 ${searchBox(base)}
@@ -159,14 +165,21 @@ ${tenant.move_in && daysBetween(tenant.move_in, formatDay(new Date())) <= 30
 <div class="card"><h2>Rent and repairs</h2><p class="quiet">Pay rent and see your lease and work orders in Resident Connect.</p>
 <a class="btn" href="${env.RESIDENT_CONNECT_URL}">Open Resident Connect</a></div>
 ${insuranceCard(env, base, tenant, insuranceSaved)}
-<div class="card"><h2>Put this on your home screen</h2>
-<p class="quiet">Keep this page one tap away, like an app. No download or login.</p>
-<p><strong>iPhone:</strong> in Safari, tap the Share button, then "Add to Home Screen".<br>
-<strong>Android:</strong> in Chrome, tap the ⋮ menu, then "Add to Home screen" or "Install app".</p></div>`,
-    AUTOCOMPLETE,
+`,
+    AUTOCOMPLETE + HOME_SCREEN_SCRIPT,
     `${base}/manifest.webmanifest`,
   );
 }
+
+// Hides the home screen card when the page was opened from the icon, and uses Android's install prompt when offered.
+const HOME_SCREEN_SCRIPT = `
+(function(){
+  var card=document.getElementById('a2hs'); if(!card) return;
+  if((window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone){card.hidden=true;return;}
+  var btn=document.getElementById('a2hs-install'), prompt=null;
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();prompt=e;btn.hidden=false;document.getElementById('a2hs-steps').hidden=true;});
+  btn.addEventListener('click',function(){if(!prompt)return;prompt.prompt();prompt.userChoice.then(function(r){if(r.outcome==='accepted')card.hidden=true;});});
+})();`;
 
 export function helpPage(base: string, query: string, matches: Guide[]): Html {
   const others = GUIDES.filter((g) => !matches.includes(g));

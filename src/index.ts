@@ -15,6 +15,7 @@ import { syncFromRentec } from "./sync";
 import { inspectionRoutes } from "./inspection";
 import { toE164 } from "./sms";
 import { dispatchRoutes, sendHeldTexts } from "./dispatch";
+import { startRoutes } from "./start";
 import { ICON_180, ICON_192, ICON_512 } from "./icons";
 
 type Vars = { tenant: Tenant; property: Property; base: string };
@@ -255,7 +256,7 @@ app.use("/admin/*", async (c, next) => {
   if (!(await isAdmin(c))) return c.text("Not authorized. Open the admin link with ?token= once on this device.", 401);
   await next();
 });
-app.get("/admin/", async (c) => c.html(await adminPage(c.env)));
+app.get("/admin/", async (c) => c.html(await adminPage(c.env, c.req.query("invite") ?? "")));
 // Shows which fields Rentec returns (names only), to confirm the API mapping before the pilot.
 app.get("/admin/rentec-check", async (c) => {
   const results = await RentecClient.fromEnv(c.env).describe();
@@ -301,8 +302,8 @@ app.post("/admin/home/:property", async (c) => {
 
 app.route("/", inspectionRoutes);
 app.route("/", dispatchRoutes);
+app.route("/", startRoutes);
 
-app.get("/", (c) => c.text("F.I.R.M. Home Care"));
 
 async function runNightly(env: Env): Promise<void> {
   const day = today();
