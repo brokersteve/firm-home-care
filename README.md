@@ -4,7 +4,8 @@ A small web app for F.I.R.M. tenants and staff that sits next to Rentec Direct. 
 reminders by email, gives each home an emergency guide and local info page, and walks them through simple
 troubleshooting (with diagrams) before a guided work order with photos lands in Rentec. For staff it has a phone
 inspection tool (move-in, move-out, routine) that saves a PDF report to the property's files in Rentec, and a home
-details form that writes the property's `HC ...` custom fields straight to Rentec.
+details form that writes the property's home details straight to Rentec, in a `[Home Care]` block of the property's
+sticky note (Rentec's API can't read or write custom fields).
 
 Rentec stays the source of truth. Each night the app copies the pilot properties (with their `HC ...` custom
 fields), tenants and leases from the Rentec Open API, then sends whatever reminders are due.
@@ -19,7 +20,7 @@ fields), tenants and leases from the Rentec Open API, then sends whatever remind
 | `src/email.ts` | Reminder wording and sending (Resend). |
 | `src/guides.ts` | The 12 troubleshooting guides as yes/no trees, the autocomplete phrases, and the search. |
 | `src/diagrams.ts` | Line drawings shown beside guide steps. |
-| `src/fields.ts` | Every `HC ...` custom field, used by the home details form, emails and guides. |
+| `src/fields.ts` | Every home detail (`HC ...` names, sticky-note labels), used by the home details form, emails and guides. |
 | `src/inspection.ts`, `src/inspection-template.ts`, `src/report.ts` | Inspections, the room checklist, and the PDF report. |
 | `src/photos.ts` | Photo storage (Cloudflare R2) and the browser-side photo shrinking. |
 | `src/pages.ts`, `src/admin.ts` | Tenant pages and the admin dashboard. |
@@ -58,5 +59,9 @@ npm run typecheck
 
 ## Rentec API key
 
-Name: FIRM Home Care. Read: Properties, Tenants, Leases, Work Orders, Lookup. Write: Properties (home details),
-Work Orders, Messages, Files (inspection reports). Nothing else. The key is only ever stored as a Cloudflare secret.
+Name: FIRM Home Care. Read: Properties, Tenants, Leases, Work Orders, Lookup. Write: Properties (home details in the
+sticky note), Work Orders, Messages, Files (inspection reports, work order photos). Nothing else. The key is only ever
+stored as a Cloudflare secret and sent as the `X-API-Key` header (see Rentec's openapi.yaml).
+
+Renters insurance end dates aren't in Rentec's API, so tenants enter them on their Home Care page and staff can
+correct them on the admin Tenants page. The sync never overwrites them.

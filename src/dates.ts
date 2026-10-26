@@ -30,3 +30,11 @@ export function daysBetween(from: string, to: string): number {
 export function prettyDay(day: string): string {
   return parseDay(day).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
+
+/** A policy end date from a form: YYYY-MM-DD within ten years of today, or null. */
+export function policyDate(value: unknown, today: string): string | null {
+  const day = String(value ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || Number.isNaN(Date.parse(day))) return null;
+  const years = (Date.parse(day) - Date.parse(today)) / (365.25 * 86400000);
+  return years > -10 && years < 10 ? day : null;
+}

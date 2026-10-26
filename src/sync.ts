@@ -50,7 +50,8 @@ export function buildTenants(tenants: RentecTenant[], leases: RentecLease[], pro
       phone: t.phone,
       move_in: lease.start,
       move_out: moveOut,
-      insurance_expires: t.insuranceExpires,
+      // Rentec's API doesn't share renters insurance dates: tenants and staff enter them in the app.
+      insurance_expires: null,
       active: moveOut && moveOut <= today ? 0 : 1,
     });
   }
@@ -68,15 +69,18 @@ export async function syncFromRentec(env: Env, today: string, client = RentecCli
   const run = await env.DB.prepare("INSERT INTO sync_runs (started_at) VALUES (?) RETURNING id").bind(now).first<{ id: number }>();
   try {
     const properties: Property[] = (await client.properties()).filter((p) => p.id && inPilot(env, p));
+    // Home details live in each property's sticky note. If one can't be read, keep what we had.
+    const details = await Promise.all(properties.map((p) => client.homeDetails(p.id).catch((err) => (console.error(`Sticky note for ${p.id}: ${err}`), null))));
     const ids = new Set(properties.map((p) => p.id));
     const tenants = buildTenants(await client.tenants(), await client.leases(), ids, today);
 
     const statements = [
-      ...properties.map((p) =>
+      ...properties.map((p, i) =>
         env.DB.prepare(
-          `INSERT INTO properties (id, name, address, fields, synced_at) VALUES (?, ?, ?, ?, ?)
-           ON CONFLICT(id) DO UPDATE SET name = excluded.name, address = excluded.address, fields = excluded.fields, synced_at = excluded.synced_at`,
-        ).bind(p.id, p.name, p.address, JSON.stringify(p.fields), now),
+          `INSERT INTO properties (id, name, address, fields, synced_at) VALUES (?, ?, ?, COALESCE(?, '{}'), ?)
+           ON CONFLICT(id) DO UPDATE SET name = excluded.name, address = excluded.address,
+             fields = COALESCE(?, properties.fields), synced_at = excluded.synced_at`,
+        ).bind(p.id, p.name, p.address, details[i] ? JSON.stringify(details[i]) : null, now, details[i] ? JSON.stringify(details[i]) : null),
       ),
       ...tenants.map((t) =>
         env.DB.prepare(
@@ -84,7 +88,7 @@ export async function syncFromRentec(env: Env, today: string, client = RentecCli
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET property_id = excluded.property_id, first_name = excluded.first_name,
              last_name = excluded.last_name, email = excluded.email, phone = excluded.phone, move_in = excluded.move_in, move_out = excluded.move_out,
-             insurance_expires = excluded.insurance_expires, active = excluded.active, synced_at = excluded.synced_at`,
+             active = excluded.active, synced_at = excluded.synced_at`,
         ).bind(t.id, t.property_id, t.first_name, t.last_name, t.email, t.phone, t.move_in, t.move_out, t.insurance_expires, t.active, now),
       ),
       // Anyone not seen in this sync has left Rentec's list: stop reminding them.

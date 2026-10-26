@@ -22,6 +22,7 @@ export function reminderEmail(kind: ReminderKind, tenant: Tenant, property: Prop
           "Your Home Care page has the emergency guide for your home, local info, and quick fixes to try before you submit a work order.",
           "We'll also email short reminders for the routine care in your lease, like air filters and detector batteries. Each takes a few minutes.",
           "Please return your Move-in Inspection Form within 10 days of move-in (lease section 1.9).",
+          "On your Home Care page, please enter the date your renters insurance policy ends, so we can remind you before it renews.",
         ],
         done: false,
       };
@@ -84,9 +85,9 @@ export function reminderEmail(kind: ReminderKind, tenant: Tenant, property: Prop
       return {
         subject: "Your renters insurance renews soon",
         lines: [
-          `Our records show your renters insurance expires on ${prettyDay(tenant.insurance_expires ?? dueDate)}.`,
+          `The renters insurance policy we have on file for you expires on ${prettyDay(tenant.insurance_expires ?? dueDate)}.`,
           "Your lease (8.1) requires at least $100,000 of personal liability coverage, with First Investor Realty & Management, LLC listed as an additional insured or interested party.",
-          "When you renew, please upload the new policy in your Rentec tenant portal instead of emailing it.",
+          "When you renew, please upload the new policy in your Rentec tenant portal instead of emailing it, then enter the new end date on your Home Care page so these reminders stop.",
         ],
         done: false,
       };
@@ -94,9 +95,9 @@ export function reminderEmail(kind: ReminderKind, tenant: Tenant, property: Prop
       return {
         subject: "Your renters insurance has expired",
         lines: [
-          `We don't have a new renters insurance policy on file for you, and the last one expired on ${prettyDay(tenant.insurance_expires ?? dueDate)}.`,
+          `The renters insurance policy we have on file for you ended on ${prettyDay(tenant.insurance_expires ?? dueDate)}.`,
           "Your lease (8.1) requires coverage the whole time you live in the home: at least $100,000 of personal liability, with First Investor Realty & Management, LLC listed as an additional insured or interested party.",
-          "Please upload your current policy in your Rentec tenant portal today. It takes a minute from your phone.",
+          "Please upload your current policy in your Rentec tenant portal today, and enter its end date on your Home Care page. It takes a minute from your phone.",
         ],
         done: false,
       };

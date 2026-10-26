@@ -8,6 +8,7 @@ import type { Env, Property, Tenant } from "./env";
 import { layout } from "./pages";
 import { sendText, textSendTime, toE164 } from "./sms";
 import { getProperty, getTenant } from "./store";
+import { RentecClient } from "./rentec";
 
 export interface Vendor {
   id: number;
@@ -116,6 +117,13 @@ export async function dispatchWorkOrder(env: Env, wo: WorkOrder, vendor: Vendor,
   await env.DB.prepare("UPDATE work_orders SET vendor_id = ?, notes = ?, sent_at = ? WHERE id = ?")
     .bind(vendor.id, notes || null, now.toISOString(), wo.id)
     .run();
+
+  // A private note on the Rentec work order, so the history there shows who it went to.
+  if (wo.rentec_id) {
+    await RentecClient.fromEnv(env)
+      .addWorkOrderNote(wo.rentec_id, `Sent to ${vendor.name} from Home Care on ${now.toLocaleDateString("en-US", { timeZone: env.TIMEZONE })}.${notes ? ` Notes: ${notes}` : ""}`)
+      .catch((err) => console.error(`Rentec note for work order ${wo.rentec_id}: ${err}`));
+  }
 
   // The office copy: what the vendor got, and how the text went.
   const textLine = {

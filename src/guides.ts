@@ -10,7 +10,7 @@ export const EMERGENCY = "EMERGENCY";
 
 export interface GuideNode {
   /**
-   * Shown to the tenant. {HC Field Name} is filled from the property's Rentec custom fields,
+   * Shown to the tenant. {HC Field Name} is filled from the property's home details,
    * and {Filters} lists the home's air filters.
    */
   text: string;
@@ -415,7 +415,7 @@ export const GUIDES: Guide[] = [
 
 const FALLBACK = "ask F.I.R.M. if you're not sure";
 
-/** Fills {HC Field} and {Filters} placeholders from the property's custom fields. */
+/** Fills {HC Field} and {Filters} placeholders from the property's home details. */
 export function fillText(text: string, fields: PropertyFields): string {
   return text
     .replace(/\{Filters\}/g, () => describeFilters(fields) || FALLBACK)

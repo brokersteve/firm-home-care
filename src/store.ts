@@ -32,7 +32,7 @@ export async function activeTenants(env: Env): Promise<Tenant[]> {
   return results;
 }
 
-/** Saves the home details form: Rentec first (the source of truth), then our copy. */
+/** Saves the home details form: Rentec's sticky note first (the source of truth), then our copy. */
 export async function saveHomeDetails(env: Env, property: Property, body: Record<string, unknown>, client = RentecClient.fromEnv(env)): Promise<Property> {
   const fields = { ...property.fields };
   for (const f of FIELDS) {
@@ -40,7 +40,7 @@ export async function saveHomeDetails(env: Env, property: Property, body: Record
     if (value) fields[f.name] = value;
     else delete fields[f.name];
   }
-  await client.updatePropertyFields(property.id, fields);
+  await client.saveHomeDetails(property.id, fields);
   await env.DB.prepare("UPDATE properties SET fields = ? WHERE id = ?").bind(JSON.stringify(fields), property.id).run();
   return { ...property, fields };
 }

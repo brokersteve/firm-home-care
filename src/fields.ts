@@ -1,6 +1,6 @@
 import type { PropertyFields } from "./env";
 
-/** Every "HC ..." custom field kept on a Rentec property, in the order the home details form shows them. */
+/** Every home detail kept for a property (in its Rentec sticky note, under these labels), in the order the home details form shows them. */
 export interface FieldSpec {
   name: string;
   label: string;

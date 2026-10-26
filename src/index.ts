@@ -1,8 +1,8 @@
 import { Hono, type Context } from "hono";
 import { html } from "hono/html";
-import { adminPage, homeDetailsPage } from "./admin";
+import { adminPage, homeDetailsPage, tenantsPage } from "./admin";
 import { isAdmin } from "./auth";
-import { formatDay } from "./dates";
+import { formatDay, policyDate } from "./dates";
 import type { Env, Property, Tenant } from "./env";
 import { EMERGENCY, FIXED, WORK_ORDER, findGuide, matchGuides, walk, type Guide, type Walk } from "./guides";
 import { verify } from "./links";
@@ -39,7 +39,14 @@ app.use("/t/:id/:sig/*", async (c, next) => {
 });
 
 app.get("/t/:id/:sig", (c) => c.redirect(`${c.req.path}/`));
-app.get("/t/:id/:sig/", (c) => c.html(homePage(c.env, c.var.base, c.var.tenant, c.var.property)));
+app.get("/t/:id/:sig/", (c) => c.html(homePage(c.env, c.var.base, c.var.tenant, c.var.property, c.req.query("saved") === "insurance")));
+
+// The tenant's renters insurance end date. Rentec's API doesn't share it, so reminders follow this one.
+app.post("/t/:id/:sig/insurance", async (c) => {
+  const day = policyDate((await c.req.parseBody())["expires"], today());
+  if (day) await c.env.DB.prepare("UPDATE tenants SET insurance_expires = ? WHERE id = ?").bind(day, c.var.tenant.id).run();
+  return c.redirect(`${c.var.base}/?saved=insurance#insurance`, 303);
+});
 
 // Home screen app: each tenant's manifest starts at their own page.
 app.get("/t/:id/:sig/manifest.webmanifest", (c) =>
@@ -172,8 +179,9 @@ app.post("/t/:id/:sig/report/:guide", async (c) => {
   ].join("\n");
 
   let workOrderId: string;
+  const rentec = RentecClient.fromEnv(c.env);
   try {
-    workOrderId = await RentecClient.fromEnv(c.env).createWorkOrder({ propertyId: property.id, tenantId: tenant.id, title, description });
+    workOrderId = await rentec.createWorkOrder({ propertyId: property.id, tenantId: tenant.id, title, description });
   } catch (err) {
     console.error(`Work order for ${tenant.id} failed: ${err}`);
     return c.html(
@@ -186,6 +194,15 @@ app.post("/t/:id/:sig/report/:guide", async (c) => {
       ),
       502,
     );
+  }
+  // Attach the photos to the work order in Rentec too. The links in the description still work if this fails.
+  if (workOrderId) {
+    const uploads = [...files("photos").slice(0, MAX_PHOTOS), ...(tag ? [tag] : [])];
+    for (const file of uploads) {
+      await rentec
+        .uploadFile({ workOrderId }, file.name || "photo.jpg", file.type || "image/jpeg", await file.arrayBuffer())
+        .catch((err) => console.error(`Photo for work order ${workOrderId}: ${err}`));
+    }
   }
   await recordOutcome(c.env, tenant.id, ctx.guide?.id ?? "other", "work_order", ctx.walked?.history ?? [], workOrderId);
   await c.env.DB.prepare(
@@ -254,12 +271,21 @@ ${r.ok ? html`<p class="quiet">${r.count} records</p><p style="font-family:monos
   );
 });
 
+// Tenants and their renters insurance end dates, which staff can correct (Rentec's API doesn't share them).
+app.get("/admin/tenants", async (c) => c.html(await tenantsPage(c.env, c.req.query("saved"))));
+app.post("/admin/tenants/:id/insurance", async (c) => {
+  const value = String((await c.req.parseBody())["expires"] ?? "").trim();
+  const day = value ? policyDate(value, today()) : null;
+  if (!value || day) await c.env.DB.prepare("UPDATE tenants SET insurance_expires = ? WHERE id = ?").bind(day, c.req.param("id")).run();
+  return c.redirect(`/admin/tenants?saved=${encodeURIComponent(c.req.param("id"))}`, 303);
+});
+
 app.post("/admin/run", async (c) => {
   await runNightly(c.env);
   return c.redirect("/admin/", 303);
 });
 
-// Home details: filled in on a phone during an inspection, saved straight to the property's custom fields in Rentec.
+// Home details: filled in on a phone during an inspection, saved straight to the property's sticky note in Rentec.
 app.get("/admin/home/:property", async (c) => {
   const property = await getProperty(c.env, c.req.param("property"));
   if (!property) return c.text("Property not found", 404);

@@ -31,7 +31,7 @@ export async function adminPage(env: Env) {
   return layout(
     "Admin",
     html`<h1>Home Care admin</h1>
-<a class="btn primary" href="/admin/workorders">Work orders</a> <a class="btn" href="/admin/intake">Paste home details</a> <a class="btn" href="/admin/inspect">Inspections</a> <a class="btn" href="/admin/rentec-check">Check Rentec connection</a>
+<a class="btn primary" href="/admin/workorders">Work orders</a> <a class="btn" href="/admin/tenants">Tenants</a> <a class="btn" href="/admin/intake">Paste home details</a> <a class="btn" href="/admin/inspect">Inspections</a> <a class="btn" href="/admin/rentec-check">Check Rentec connection</a>
 <div class="card"><h2>Last Rentec sync</h2>
 ${lastSync
   ? html`<p>${lastSync.started_at.slice(0, 16).replace("T", " ")} UTC: ${lastSync.properties ?? 0} properties, ${lastSync.tenants ?? 0} tenants
@@ -77,5 +77,26 @@ ${f.choices ? html`<datalist id="${f.name}-choices">${f.choices.map((c) => html`
 )}
 <button class="btn primary">${nav.button}</button></form>
 <a class="quiet" href="${nav.back}">${nav.backLabel}</a>`,
+  );
+}
+
+/** Active tenants with their contact details and renters insurance end date (editable). */
+export async function tenantsPage(env: Env, saved?: string) {
+  const { results } = await env.DB.prepare(
+    `SELECT t.id, t.first_name, t.last_name, t.email, t.phone, t.insurance_expires, p.name AS home
+     FROM tenants t JOIN properties p ON p.id = t.property_id WHERE t.active = 1 ORDER BY p.name, t.last_name`,
+  ).all<{ id: string; first_name: string; last_name: string; email: string | null; phone: string | null; insurance_expires: string | null; home: string }>();
+  return layout(
+    "Tenants",
+    html`<h1>Tenants</h1>
+<p class="quiet">Rentec doesn't share renters insurance dates through its API, so tenants enter their policy end date on their Home Care page. Correct it here when you see a new policy in Rentec. Reminders go 30 days before and the day after this date. Leave it blank to clear it.</p>
+${results.map(
+  (t) => html`<div class="card${saved === t.id ? " note" : ""}"><h2>${t.first_name} ${t.last_name}</h2>
+<p class="quiet">${t.home}<br>${t.email ?? "No email"} · ${t.phone ?? "No phone"}</p>
+<form method="post" action="/admin/tenants/${encodeURIComponent(t.id)}/insurance"><label for="ins-${t.id}">Renters insurance ends${saved === t.id ? " (saved)" : ""}</label>
+<input type="date" id="ins-${t.id}" name="expires" value="${t.insurance_expires ?? ""}"> <button class="btn">Save</button></form></div>`,
+)}
+${results.length ? "" : html`<p>No active tenants yet. Run the Rentec sync from the admin page.</p>`}
+<a class="quiet" href="/admin/">Back to admin</a>`,
   );
 }

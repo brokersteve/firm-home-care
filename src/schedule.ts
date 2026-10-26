@@ -64,7 +64,7 @@ export function dueReminders(tenant: Tenant, fields: PropertyFields, today: stri
   candidates.push({ kind: "detector_battery", dueDate: lastYearly(10, 15, today) });
   if (tenant.insurance_expires) {
     candidates.push({ kind: "insurance", dueDate: addDays(tenant.insurance_expires, -30) });
-    // Still the old date the day after it lapses: the new policy hasn't been uploaded to Rentec.
+    // Still the old date the day after it lapses: no new end date has been entered.
     candidates.push({ kind: "insurance_expired", dueDate: addDays(tenant.insurance_expires, 1) });
   }
 

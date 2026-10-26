@@ -24,7 +24,7 @@ export interface Env {
   TWILIO_FROM: string;
 }
 
-/** The "HC ..." custom fields F.I.R.M. keeps on each Rentec property. */
+/** A property's home details by "HC ..." name, kept in its Rentec sticky note. */
 export type PropertyFields = Record<string, string>;
 
 export interface Property {
