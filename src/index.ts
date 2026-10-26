@@ -16,6 +16,8 @@ import { inspectionRoutes } from "./inspection";
 import { toE164 } from "./sms";
 import { dispatchRoutes, sendHeldTexts } from "./dispatch";
 import { startRoutes } from "./start";
+import { trackerEmail, trackerRoutes } from "./tracker";
+import { sendEmail } from "./email";
 import { ICON_180, ICON_192, ICON_512 } from "./icons";
 
 type Vars = { tenant: Tenant; property: Property; base: string };
@@ -303,6 +305,7 @@ app.post("/admin/home/:property", async (c) => {
 app.route("/", inspectionRoutes);
 app.route("/", dispatchRoutes);
 app.route("/", startRoutes);
+app.route("/", trackerRoutes);
 
 
 async function runNightly(env: Env): Promise<void> {
@@ -311,6 +314,9 @@ async function runNightly(env: Env): Promise<void> {
   const reminders = await sendDueReminders(env, day);
   console.log(`Nightly run ${day}: synced ${sync.properties} properties, ${sync.tenants} tenants; sent ${reminders.sent} reminders`);
   if (reminders.failed.length) console.error(`Failed reminders:\n${reminders.failed.join("\n")}`);
+  // The office's daily tracker email (open jobs by vendor, money owed), sent before the workday.
+  const tracker = await trackerEmail(env, day);
+  if (tracker) await sendEmail(env, env.OFFICE_EMAIL, tracker.subject, tracker.html).catch((err) => console.error(`Tracker email: ${err}`));
 }
 
 export default {

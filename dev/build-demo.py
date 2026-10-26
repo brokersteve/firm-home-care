@@ -14,9 +14,11 @@ pages = {}
 for p, s, h, l in d:
     if s == 200: pages[p[len(base)+1:]] = {"t": title_of(h), "b": body_of(h)}
 # Staff pages, captured from the local app after seeding sample vendors and work orders .
-for k, f in [("/admin/workorders", "admin__admin_workorders.html"), ("/admin/workorders/1", "admin__admin_workorders_1.html"),
-             ("/admin/workorders/2", "admin__admin_workorders_2.html"), ("/admin/vendors", "admin__admin_vendors.html")]:
-    h = open(DIR + f).read(); pages[k] = {"t": title_of(h), "b": body_of(h)}
+# admin__admin_tracker_3.html holds /admin/tracker/3, and so on.
+import glob, os
+for path in sorted(glob.glob(DIR + "admin__*.html")):
+    k = "/" + os.path.basename(path)[len("admin__"):-len(".html")].replace("_", "/")
+    h = open(path).read(); pages[k] = {"t": title_of(h), "b": body_of(h)}
 for k, f in [("__fixed", "fixed.html"), ("__submitted", "submitted.html"), ("__start", "start.html")]:
     h = open(DIR + f).read(); pages[k] = {"t": title_of(h), "b": body_of(h)}
 pages["__submitted"]["b"] = pages["__submitted"]["b"].replace("</main>", '<div class="card note"><p><strong>Demo:</strong> see what F.I.R.M. staff do next. A sample work order like this one is waiting to be sent to a vendor.</p><a class="btn primary" href="/admin/workorders/2">Open it as staff</a></div></main>', 1)
@@ -33,9 +35,10 @@ script = r'''
   var BASE=%s, pages=JSON.parse(document.getElementById('pages').textContent), app=document.getElementById('app');
   var current='', sent={};
   function keyOf(href){
+    if(href==='#tenant') return '';
+    if(href==='#start') return '__start';
     var u=href.replace(/^https?:\/\/[^/]+/,'').replace(/&amp;/g,'&').split('#')[0];
-    if(u==='#tenant') return '';
-    if(u==='#start') return '__start';
+
     if(u.indexOf('/admin')===0){ u=u.split('?')[0]; return (u in pages)?u:'/admin/workorders'; }
     if(u.indexOf(BASE)!==0) return null; return u.slice(BASE.length+1);
   }
@@ -71,7 +74,7 @@ script = r'''
       note('Sent to '+name+': '+(email?'emailed':'not emailed (no email on file)')+', '+text+'. A copy went to steve@firm.vip for your Outlook folder.'+(isNew?' '+name+' was added to your vendor list.':'')+' (Demo: nothing was actually sent.)');
       return;
     }
-    if(current.indexOf('/admin')===0){ var n=f.querySelector('.demo-note')||document.createElement('p'); n.className='demo-note'; n.textContent='In the real app this saves the vendor. The demo does not save it.'; f.appendChild(n); return; }
+    if(current.indexOf('/admin')===0){ var n=f.querySelector('.demo-note')||document.createElement('p'); n.className='demo-note'; n.textContent='In the real app this saves. The demo does not save changes.'; f.appendChild(n); return; }
   },true);
   window.addEventListener('popstate',function(e){ show(e.state&&e.state.k||'',false); });
   try{history.replaceState({k:''},'');}catch(e){}
@@ -84,7 +87,7 @@ html = f'''<title>FIRM Home Care Demo</title>
 .demo-bar a{{color:var(--brand);font-weight:600}}
 .demo-note{{background:var(--tint);border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}}
 </style>
-<div class="demo-bar"><strong>Demo</strong> with a sample home and tenant, and your vendor list. Nothing you enter is saved or sent.<br><a href="#start">Start page</a> &middot; <a href="#tenant">Tenant page</a> &middot; <a href="/admin/workorders">Staff: work orders</a></div>
+<div class="demo-bar"><strong>Demo</strong> with a sample home and tenant, and your vendor list. Nothing you enter is saved or sent.<br><a href="#start">Start page</a> &middot; <a href="#tenant">Tenant page</a> &middot; <a href="/admin/workorders">Staff: work orders</a> &middot; <a href="/admin/tracker">Tracker</a></div>
 <div id="app"></div>
 <script id="pages" type="application/json">{blob}</script>
 <script>{script}</script>

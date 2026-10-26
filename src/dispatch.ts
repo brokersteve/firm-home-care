@@ -20,6 +20,8 @@ export interface Vendor {
   phone: string | null;
   /** A landline: shown so staff can call, never texted. */
   office_phone: string | null;
+  /** Position in the Send to list: lower first; null sorts alphabetically after. */
+  sort_order: number | null;
   active: number;
 }
 
@@ -123,6 +125,14 @@ export async function dispatchWorkOrder(env: Env, wo: WorkOrder, vendor: Vendor,
   await env.DB.prepare("UPDATE work_orders SET vendor_id = ?, notes = ?, sent_at = ? WHERE id = ?")
     .bind(vendor.id, notes || null, now.toISOString(), wo.id)
     .run();
+  // Track it: one tracker row per work order, moved to the new vendor if it's sent again.
+  const issued = now.toLocaleDateString("en-CA", { timeZone: env.TIMEZONE });
+  const job = await env.DB.prepare("SELECT id FROM jobs WHERE work_order_id = ?").bind(wo.id).first<{ id: number }>();
+  if (job) await env.DB.prepare("UPDATE jobs SET vendor_id = ? WHERE id = ?").bind(vendor.id, job.id).run();
+  else
+    await env.DB.prepare("INSERT INTO jobs (work_order_id, vendor_id, issued_on, property, work) VALUES (?, ?, ?, ?, ?)")
+      .bind(wo.id, vendor.id, issued, property.address.split(",")[0]!, wo.title)
+      .run();
 
   // A private note on the Rentec work order, so the history there shows who it went to.
   if (wo.rentec_id) {
@@ -167,7 +177,7 @@ export async function sendHeldTexts(env: Env, now: Date): Promise<number> {
 }
 
 async function vendors(env: Env, activeOnly: boolean): Promise<Vendor[]> {
-  const { results } = await env.DB.prepare(`SELECT * FROM vendors ${activeOnly ? "WHERE active = 1" : ""} ORDER BY name`).all<Vendor>();
+  const { results } = await env.DB.prepare(`SELECT * FROM vendors ${activeOnly ? "WHERE active = 1" : ""} ORDER BY sort_order IS NULL, sort_order, name`).all<Vendor>();
   return results;
 }
 
@@ -191,6 +201,7 @@ ${results.map(
   (w) => html`<tr><td><a href="/admin/workorders/${w.id}">${w.address}</a><br><span class="quiet">${w.first_name ?? ""} ${w.last_name ?? ""} · ${when(w.created_at)}</span></td>
 <td>${w.title}</td><td>${w.vendor ? html`${w.vendor}<br><span class="quiet">${when(w.sent_at!)}</span>` : html`<strong>Not sent yet</strong>`}</td></tr>`,
 )}</table>${results.length ? "" : html`<p class="quiet">No work orders yet.</p>`}</div>
+<a class="btn primary" href="/admin/tracker">Work order tracker</a>
 <a class="btn" href="/admin/vendors">Vendors</a>
 <a class="quiet" href="/admin/">Back to admin</a>`,
     ),
@@ -296,7 +307,7 @@ dispatchRoutes.get("/admin/vendors", async (c) => {
 <p class="quiet">Who you can send work orders to. Texts need a cell number; the email gets the full request and photos.</p>
 ${list.map(
   (v) => html`<form method="post" action="/admin/vendors/${v.id}" class="card"${v.active ? "" : html` style="opacity:.6"`}>
-${field("name", "Name", "text", v.name)}${field("contact", "Contact person", "text", v.contact ?? "")}${field("trade", "Trade", "text", v.trade ?? "")}${field("email", "Email", "email", v.email ?? "")}${field("phone", "Cell for texts", "tel", v.phone ?? "")}${field("office_phone", "Office phone (not texted)", "tel", v.office_phone ?? "")}
+${field("name", "Name", "text", v.name)}${field("contact", "Contact person", "text", v.contact ?? "")}${field("trade", "Trade", "text", v.trade ?? "")}${field("email", "Email", "email", v.email ?? "")}${field("phone", "Cell for texts", "tel", v.phone ?? "")}${field("office_phone", "Office phone (not texted)", "tel", v.office_phone ?? "")}${field("sort_order", "Position in the Send to list (1 = top; blank = A to Z)", "number", v.sort_order?.toString() ?? "")}
 <label><input type="checkbox" name="active" value="1" ${v.active ? "checked" : ""}> Show in the Send to list</label>
 <button class="btn">Save</button></form>`,
 )}
@@ -317,6 +328,7 @@ function vendorFields(body: Record<string, unknown>, prefix = "") {
     email: s("email") || null,
     phone: s("phone") || null,
     office_phone: s("office_phone") || null,
+    sort_order: Number.parseInt(s("sort_order"), 10) || null,
   };
 }
 
@@ -333,8 +345,8 @@ dispatchRoutes.post("/admin/vendors/:id", async (c) => {
   const body = await c.req.parseBody();
   const v = vendorFields(body);
   if (!v.name) return c.redirect("/admin/vendors", 303);
-  await c.env.DB.prepare("UPDATE vendors SET name = ?, contact = ?, trade = ?, email = ?, phone = ?, office_phone = ?, active = ? WHERE id = ?")
-    .bind(v.name, v.contact, v.trade, v.email, v.phone, v.office_phone, body["active"] === "1" ? 1 : 0, Number(c.req.param("id")) || 0)
+  await c.env.DB.prepare("UPDATE vendors SET name = ?, contact = ?, trade = ?, email = ?, phone = ?, office_phone = ?, sort_order = ?, active = ? WHERE id = ?")
+    .bind(v.name, v.contact, v.trade, v.email, v.phone, v.office_phone, v.sort_order, body["active"] === "1" ? 1 : 0, Number(c.req.param("id")) || 0)
     .run();
   return c.redirect("/admin/vendors", 303);
 });

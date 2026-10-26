@@ -33,7 +33,7 @@ export async function adminPage(env: Env, invite = "") {
   return layout(
     "Admin",
     html`<h1>Home Care admin</h1>
-<a class="btn primary" href="/admin/workorders">Work orders</a> <a class="btn" href="/admin/tenants">Tenants</a> <a class="btn" href="/admin/intake">Paste home details</a> <a class="btn" href="/admin/inspect">Inspections</a> <a class="btn" href="/admin/rentec-check">Check Rentec connection</a>
+<a class="btn primary" href="/admin/tracker">Work order tracker</a> <a class="btn" href="/admin/workorders">Work orders</a> <a class="btn" href="/admin/tenants">Tenants</a> <a class="btn" href="/admin/intake">Paste home details</a> <a class="btn" href="/admin/inspect">Inspections</a> <a class="btn" href="/admin/rentec-check">Check Rentec connection</a>
 ${invite ? html`<div class="card note"><p>${invite}</p></div>` : ""}
 <div class="card"><h2>Get tenants onto Home Care</h2>
 <p class="quiet">Tenants add the page to their home screen once; the FIRM icon opens it after that. Lost it or new phone? They go to ${env.APP_URL.replace(/^https?:\/\//, "")} and enter their cell or email to get their link again.</p>
