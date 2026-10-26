@@ -70,6 +70,7 @@ export const GUIDES: Guide[] = [
         ],
       },
       jammed: {
+        video: { url: "https://www.youtube.com/watch?v=L3-MVUecyC8", title: "Unjam a disposal (1:34)" },
         text: "It's jammed. Switch it off. Put the hex wrench ({HC Disposal Wrench}) into the socket on the bottom center and work it back and forth until it turns freely. Then press the red reset button on the bottom. Run cold water and switch it on. Is it working?",
         diagram: "disposal_bottom",
         options: WORKING(),
@@ -109,6 +110,7 @@ export const GUIDES: Guide[] = [
         options: WORKING("panel"),
       },
       panel: {
+        video: { url: "https://www.youtube.com/watch?v=oPfaaDQps_c", title: "Reset a tripped breaker (0:42)" },
         text: "Open the breaker panel ({HC Breaker Panel}). Find a switch sitting in the middle or off. Push it fully off, then back on. Is the power back?",
         diagram: "breaker_panel",
         options: [
@@ -137,6 +139,7 @@ export const GUIDES: Guide[] = [
     start: "find",
     nodes: {
       find: {
+        video: { url: "https://www.youtube.com/watch?v=B475Rhxs36A", title: "Reset a GFCI outlet (0:30)" },
         text: "Look for an outlet with TEST and RESET buttons in the same room, or the nearest kitchen, bathroom, garage or outdoor outlet. One of these can control several outlets. Press RESET firmly until it clicks. Is the outlet working?",
         diagram: "gfci",
         options: WORKING("dry"),
@@ -170,6 +173,7 @@ export const GUIDES: Guide[] = [
         ],
       },
       main: {
+        video: { url: "https://www.youtube.com/watch?v=WvamQW7C86A", title: "Shut off the main water (1:15)" },
         text: "Shut off the main water: {HC Water Shutoff}. Then call our emergency line so we can send someone.",
         diagram: "water_shutoff",
         options: [{ label: "Water is off", next: EMERGENCY }],
@@ -221,6 +225,7 @@ export const GUIDES: Guide[] = [
         ],
       },
       clogged: {
+        video: { url: "https://www.youtube.com/watch?v=LJslmjms1iE", title: "Unclog a toilet (2:39)" },
         text: "Don't flush again. Use a flange plunger (the kind with a sleeve) with 10 to 15 steady pushes. Is it clear?",
         options: WORKING("valve"),
       },
@@ -306,6 +311,7 @@ export const GUIDES: Guide[] = [
         options: WORKING("filter"),
       },
       filter: {
+        video: { url: "https://www.youtube.com/watch?v=NivYhQL7Bg4", title: "Which way the filter arrow points (0:32)" },
         text: "Check the air filters: {Filters}. A clogged filter can shut the system off; replace any that are dirty. Is it running now?",
         options: WORKING("ice"),
       },
@@ -337,6 +343,7 @@ export const GUIDES: Guide[] = [
     start: "filter",
     nodes: {
       filter: {
+        video: { url: "https://www.youtube.com/watch?v=AGEOVUQZR0A", title: "Clean the dishwasher filter (2:10)" },
         text: "Twist out the filter at the bottom of the dishwasher and rinse it under the tap. If you have a disposal, run it for a few seconds; they share a drain. Then run a short rinse cycle. Did it drain?",
         diagram: "dishwasher_filter",
         options: WORKING(),
@@ -388,6 +395,7 @@ export const GUIDES: Guide[] = [
     start: "chirp",
     nodes: {
       chirp: {
+        video: { url: "https://www.youtube.com/watch?v=IxOg4tDN_7s", title: "Replace detector batteries (2:14)" },
         text: "One short chirp every 30 to 60 seconds means a low battery. Replace the batteries. Has it stopped? Please never remove a detector or leave it without batteries.",
         options: WORKING(),
       },
