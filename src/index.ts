@@ -129,6 +129,9 @@ app.post("/t/:id/:sig/report/:guide", async (c) => {
     ...(text("where") ? [`Where: ${text("where")}`] : []),
     ...(text("when") ? [`Best times: ${text("when")}`] : []),
     `Pets in the home: ${body["pets"] === "yes" ? "yes" : "no"}`,
+    ...(ctx.guide?.drainLine && body["drain_ack"] === "1"
+      ? ["Tenant acknowledged clearing a slow or clogged drain is their cost unless the line is collapsed or damaged through no fault of theirs."]
+      : []),
     ...(ctx.walked?.history.length
       ? ["", "Checks already done:", ...ctx.walked.history.map((h, i) => `${i + 1}. ${h.question}\n   Answer: ${h.answer}`)]
       : []),

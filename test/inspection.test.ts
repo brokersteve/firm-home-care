@@ -24,3 +24,12 @@ describe("inspection rooms", () => {
     expect(roomDone(exterior!)).toBe(true);
   });
 });
+
+describe("half baths", () => {
+  it("get the bathroom checklist without a tub or shower", () => {
+    const rooms = buildRooms({ bedrooms: 2, bathrooms: 1, halfBathrooms: 1, dining: false, laundry: false, garage: false });
+    const half = rooms.find((r) => r.name === "Half bath");
+    expect(half?.items.map((i) => i.name)).not.toContain("Tub or shower");
+    expect(half?.items.map((i) => i.name)).toContain("Toilet");
+  });
+});

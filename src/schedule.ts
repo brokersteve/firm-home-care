@@ -26,10 +26,6 @@ export function filterMonths(fields: PropertyFields): number {
   return months >= 1 && months <= 12 ? months : DEFAULT_FILTER_MONTHS;
 }
 
-export function hasReplaceableBatteries(fields: PropertyFields): boolean {
-  return !/sealed/i.test(fields["HC Detector Battery"] ?? "");
-}
-
 /** The most recent filter due date on or before today: every N months counted from move-in. */
 function lastFilterDue(moveIn: string, months: number, today: string): string | null {
   let due: string | null = null;
@@ -64,9 +60,7 @@ export function dueReminders(tenant: Tenant, fields: PropertyFields, today: stri
   ];
   const filterDue = lastFilterDue(moveIn, filterMonths(fields), today);
   if (filterDue) candidates.push({ kind: "filter", dueDate: filterDue });
-  if (hasReplaceableBatteries(fields)) {
-    candidates.push({ kind: "detector_battery", dueDate: lastYearly(10, 15, today) });
-  }
+  candidates.push({ kind: "detector_battery", dueDate: lastYearly(10, 15, today) });
   if (tenant.insurance_expires) {
     candidates.push({ kind: "insurance", dueDate: addDays(tenant.insurance_expires, -30) });
   }

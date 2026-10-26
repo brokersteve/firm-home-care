@@ -47,9 +47,8 @@ describe("dueReminders", () => {
     expect(kinds(tenant(), {}, "2026-06-09").some((k) => k.startsWith("detector_test"))).toBe(false);
   });
 
-  it("skips the battery reminder for sealed detectors", () => {
-    expect(kinds(tenant(), { "HC Detector Battery": "9V" }, "2026-10-15")).toContain("detector_battery@2026-10-15");
-    expect(kinds(tenant(), { "HC Detector Battery": "Sealed 10-year" }, "2026-10-15").some((k) => k.startsWith("detector_battery"))).toBe(false);
+  it("sends the yearly battery reminder on October 15", () => {
+    expect(kinds(tenant(), {}, "2026-10-15")).toContain("detector_battery@2026-10-15");
   });
 
   it("sends the insurance reminder 30 days before expiry", () => {

@@ -34,7 +34,6 @@ export const FIELDS: FieldSpec[] = [
   { name: "HC Filter Months", label: "Change filters every (months)", hint: "Lease says at least every 60 days: 2", section: "Filters" },
   { name: "HC Smoke Detectors", label: "Smoke detectors", hint: "How many", required: true, section: "Safety" },
   { name: "HC CO Detectors", label: "CO detectors", hint: "How many, or 0", section: "Safety" },
-  { name: "HC Detector Battery", label: "Detector battery", hint: "9V, AA, or Sealed 10-year", required: true, choices: ["9V", "AA", "Sealed 10-year"], section: "Safety" },
   { name: "HC Water Shutoff", label: "Main water shutoff", hint: "e.g. Crawl space entry, left of water heater", required: true, section: "Safety" },
   { name: "HC Gas Shutoff", label: "Gas shutoff", hint: "e.g. At meter, right side of house, or None", section: "Safety" },
   { name: "HC Breaker Panel", label: "Breaker panel", hint: "e.g. Garage, left wall", required: true, section: "Safety" },

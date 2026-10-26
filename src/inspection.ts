@@ -9,7 +9,9 @@ import {
   roomDone,
   type InspectionKind,
   type InspectionRoom,
+  type RoomChoices,
 } from "./inspection-template";
+import { matchProperty, parseIntake } from "./intake";
 import { layout } from "./pages";
 import { SHRINK_PHOTOS_SCRIPT, savePhoto } from "./photos";
 import { buildInspectionPdf } from "./report";
@@ -66,21 +68,25 @@ async function find(c: C): Promise<Inspection | null> {
 const roomChoicesForm = (action: string, extra: unknown) => html`<form method="post" action="${action}" class="card">
 ${extra}
 <label for="bedrooms">Bedrooms</label><input type="text" inputmode="numeric" id="bedrooms" name="bedrooms" value="3">
-<label for="bathrooms">Bathrooms</label><input type="text" inputmode="numeric" id="bathrooms" name="bathrooms" value="2">
+<label for="bathrooms">Full bathrooms</label><input type="text" inputmode="numeric" id="bathrooms" name="bathrooms" value="2">
+<label for="half">Half baths</label><input type="text" inputmode="numeric" id="half" name="half" value="0">
 <label><input type="checkbox" name="dining" value="1"> Separate dining room</label>
 <label><input type="checkbox" name="laundry" value="1" checked> Laundry area</label>
 <label><input type="checkbox" name="garage" value="1"> Garage or storage room</label>
 <button class="btn primary">Start</button></form>`;
 
-async function create(env: Env, propertyId: string, kind: InspectionKind, doneBy: "staff" | "tenant", tenantId: string | null, body: Record<string, unknown>) {
+const choicesFrom = (body: Record<string, unknown>): RoomChoices => ({
+  bedrooms: Number(body["bedrooms"]),
+  bathrooms: Number(body["bathrooms"]),
+  halfBathrooms: Number(body["half"] ?? 0),
+  dining: body["dining"] === "1",
+  laundry: body["laundry"] === "1",
+  garage: body["garage"] === "1",
+});
+
+async function create(env: Env, propertyId: string, kind: InspectionKind, doneBy: "staff" | "tenant", tenantId: string | null, choices: RoomChoices) {
   const id = crypto.randomUUID();
-  const rooms = buildRooms({
-    bedrooms: Number(body["bedrooms"]),
-    bathrooms: Number(body["bathrooms"]),
-    dining: body["dining"] === "1",
-    laundry: body["laundry"] === "1",
-    garage: body["garage"] === "1",
-  });
+  const rooms = buildRooms(choices);
   await env.DB.prepare(
     "INSERT INTO inspections (id, property_id, tenant_id, kind, done_by, rooms, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
   )
@@ -102,6 +108,7 @@ inspectionRoutes.get("/admin/inspect", async (c) => {
       "Inspections",
       html`<h1>Inspections</h1>
 <h2>Start an inspection</h2>
+<p><a class="btn" href="/admin/intake">Start from an owner's intake answers</a></p>
 ${roomChoicesForm(
   "/admin/inspect",
   html`<label for="property">Property</label><select id="property" name="property">${properties.map((p) => html`<option value="${p.id}">${p.name}</option>`)}</select>
@@ -121,8 +128,50 @@ inspectionRoutes.post("/admin/inspect", async (c) => {
   const property = await getProperty(c.env, String(body["property"] ?? ""));
   const kind = String(body["kind"]) as InspectionKind;
   if (!property || !(kind in KIND_LABELS)) return c.text("Pick a property and type", 400);
-  const id = await create(c.env, property.id, kind, "staff", null, body);
+  const id = await create(c.env, property.id, kind, "staff", null, choicesFrom(body));
   return c.redirect(`/admin/inspect/${id}`, 303);
+});
+
+// Staff: paste the answers an owner sent from the New Property Intake form. Saves the home details to Rentec
+// and starts an inspection with the home's rooms.
+const intakePage = (properties: Property[], text: string, error: string) =>
+  layout(
+    "Start from intake",
+    html`<h1>Start from an owner's intake</h1>
+<p class="quiet">Paste the answers from the owner's "New property information" email. The home details go to the property in Rentec, and the inspection gets one room per bedroom and bathroom.</p>
+${error ? html`<div class="card note"><p>${error}</p></div>` : ""}
+<form method="post" action="/admin/intake" class="card">
+<label for="text">Owner's answers</label><textarea id="text" name="text" rows="12" required>${text}</textarea>
+<label for="property">Property</label><select id="property" name="property"><option value="">Match by the address in the answers</option>${properties.map((p) => html`<option value="${p.id}">${p.name}</option>`)}</select>
+<label for="kind">Type</label><select id="kind" name="kind">${(Object.keys(KIND_LABELS) as InspectionKind[]).map((k) => html`<option value="${k}">${KIND_LABELS[k]}</option>`)}</select>
+<button class="btn primary">Save details and start</button></form>
+<a class="quiet" href="/admin/inspect">Back</a>`,
+  );
+
+inspectionRoutes.get("/admin/intake", async (c) => c.html(intakePage(await listProperties(c.env), "", "")));
+
+inspectionRoutes.post("/admin/intake", async (c) => {
+  const body = await c.req.parseBody();
+  const text = String(body["text"] ?? "").slice(0, 20000);
+  const kind = String(body["kind"]) as InspectionKind;
+  const properties = await listProperties(c.env);
+  const intake = parseIntake(text);
+  const chosen = String(body["property"] ?? "");
+  const property = chosen ? properties.find((p) => p.id === chosen) : matchProperty(intake.address, properties);
+  if (!property || !(kind in KIND_LABELS)) {
+    const reason = intake.address
+      ? `No single property matches "${intake.address}". Pick the property from the list.`
+      : "There's no property address in these answers. Pick the property from the list.";
+    return c.html(intakePage(properties, text, reason), 400);
+  }
+  try {
+    await saveHomeDetails(c.env, property, { ...property.fields, ...intake.fields });
+  } catch (err) {
+    console.error(`Intake save for ${property.id} failed: ${err}`);
+    return c.html(intakePage(properties, text, "Couldn't save the details to Rentec. Nothing was changed. Please try again."), 502);
+  }
+  const id = await create(c.env, property.id, kind, "staff", null, intake.rooms);
+  return c.redirect(`/admin/inspect/${id}?from=intake`, 303);
 });
 
 // Tenant: their own move-in form, one per tenant.
@@ -144,7 +193,7 @@ ${roomChoicesForm(`${c.get("base")}/inspection`, "")}`,
 
 inspectionRoutes.post("/t/:id/:sig/inspection", async (c) => {
   const tenant = c.get("tenant")!;
-  const id = await create(c.env, tenant.property_id, "move_in", "tenant", tenant.id, await c.req.parseBody());
+  const id = await create(c.env, tenant.property_id, "move_in", "tenant", tenant.id, choicesFrom(await c.req.parseBody()));
   return c.redirect(`${c.get("base")}/inspection/${id}`, 303);
 });
 
@@ -165,6 +214,9 @@ ${insp.status === "complete"
   ? html`<div class="card note"><p>Completed ${insp.completed_at?.slice(0, 10)}${insp.signed_name ? ` by ${insp.signed_name}` : ""}.
 ${insp.uploaded_to_rentec ? " Saved to the property's files in Rentec." : ""}</p><a class="btn primary" href="${root}/report.pdf">Open the report (PDF)</a></div>`
   : html`<p>${done} of ${insp.rooms.length} rooms done.</p>`}
+${c.req.query("from") === "intake"
+  ? html`<div class="card note"><p>Started from the owner's intake. Their answers are saved to the property in Rentec. Check them on site under Home details.</p></div>`
+  : ""}
 <div class="card">${insp.rooms.map(
   (r, i) => html`<a class="btn ${roomDone(r) ? "" : "primary"}" href="${root}/room/${i}">${roomDone(r) ? "✓ " : ""}${r.name}</a>`,
 )}</div>

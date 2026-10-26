@@ -17,7 +17,6 @@ const properties = [
       "HC Filter Months": "2",
       "HC Smoke Detectors": "4",
       "HC CO Detectors": "1",
-      "HC Detector Battery": "9V",
       "HC Heat Type": "Gas furnace",
       "HC Water Heater": "Gas tank",
       "HC Breaker Panel": "Garage, left wall",

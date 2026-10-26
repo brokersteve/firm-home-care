@@ -38,6 +38,8 @@ export interface Guide {
   photoHint: string;
   /** A lease reminder shown before the work order, when the fix may be the tenant's to pay for. */
   leaseNote?: string;
+  /** Drain clogs are the tenant's to pay for, so the work order asks them to acknowledge it. */
+  drainLine?: boolean;
   start: string;
   nodes: Record<string, GuideNode>;
 }
@@ -56,7 +58,8 @@ export const GUIDES: Guide[] = [
     safety: "Never put a hand inside the disposal. Water leaking under the sink or a burning smell? Switch it off and call.",
     appliance: true,
     photoHint: "the disposal from under the sink",
-    leaseNote: "Your lease (6.3) makes clogs from grease, wipes or food scraps the tenant's cost to clear.",
+    leaseNote: "Your lease (6.3) makes clogs from grease, wipes or food scraps the tenant's cost to clear. Slow or clogged drain lines are the tenant's responsibility, including the cost of clearing them. F.I.R.M. covers it only when the line is collapsed or damaged through no fault of the tenant, such as tree roots or a broken pipe.",
+    drainLine: true,
     start: "hum",
     nodes: {
       hum: {
@@ -185,7 +188,8 @@ export const GUIDES: Guide[] = [
     phrases: ["Kitchen sink clogged", "Bathroom sink draining slowly", "Shower drain clogged", "Tub won't drain"],
     safety: "Several drains backing up at once, or sewage coming up? Stop using all water and call.",
     photoHint: "the drain and the standing water",
-    leaseNote: "Your lease (6.3) makes clogs from grease, wipes, hygiene products or objects the tenant's cost to clear. Roots and the main sewer line are ours.",
+    leaseNote: "Slow or clogged drain lines are the tenant's responsibility, including the cost of clearing them. F.I.R.M. covers it only when the line is collapsed or damaged through no fault of the tenant, such as tree roots or a broken pipe.",
+    drainLine: true,
     start: "strainer",
     nodes: {
       strainer: {
@@ -205,7 +209,8 @@ export const GUIDES: Guide[] = [
     phrases: ["Toilet clogged", "Toilet keeps running", "Toilet overflowing", "Toilet won't flush"],
     safety: "Water rising toward the rim? Turn the valve behind the toilet clockwise to shut it off right away.",
     photoHint: "the toilet, and inside the tank with the lid off",
-    leaseNote: "Your lease (6.3) makes clogs from wipes, hygiene products or objects the tenant's cost to clear.",
+    leaseNote: "Slow or clogged drain lines are the tenant's responsibility, including the cost of clearing them. F.I.R.M. covers it only when the line is collapsed or damaged through no fault of the tenant, such as tree roots or a broken pipe.",
+    drainLine: true,
     start: "which",
     nodes: {
       which: {
@@ -383,7 +388,7 @@ export const GUIDES: Guide[] = [
     start: "chirp",
     nodes: {
       chirp: {
-        text: "One short chirp every 30 to 60 seconds means a low battery. Replace the battery ({HC Detector Battery}). Has it stopped? Please never remove a detector or leave it without a battery.",
+        text: "One short chirp every 30 to 60 seconds means a low battery. Replace the batteries. Has it stopped? Please never remove a detector or leave it without batteries.",
         options: WORKING(),
       },
     },

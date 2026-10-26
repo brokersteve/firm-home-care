@@ -11,10 +11,6 @@ export interface Email {
   done: boolean;
 }
 
-function field(property: Property, name: string, fallback: string): string {
-  return property.fields[name]?.trim() || fallback;
-}
-
 /** The words of each reminder. Kept plain so F.I.R.M. can reword them without touching anything else. */
 export function reminderEmail(kind: ReminderKind, tenant: Tenant, property: Property, dueDate: string): Email {
   switch (kind) {
@@ -56,7 +52,7 @@ export function reminderEmail(kind: ReminderKind, tenant: Tenant, property: Prop
       return {
         subject: "Yearly detector battery change",
         lines: [
-          `Please replace the battery in each smoke and CO detector (${field(property, "HC Detector Battery", "9V")}).`,
+          "Please replace the batteries in each smoke and CO detector. Sealed 10-year alarms don't need new batteries.",
           "Press the test button afterwards to make sure each one beeps.",
         ],
         done: true,

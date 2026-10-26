@@ -121,6 +121,7 @@ ${tenant.move_in && daysBetween(tenant.move_in, formatDay(new Date())) <= 30
 <div class="card note"><h2>Quick reminders from your lease</h2><ul>
 <li>Replace air filters at least every 60 days, and detector batteries as needed.</li>
 <li>Report leaks, mold, or heating, plumbing or appliance problems within 24 hours.</li>
+<li>Slow or clogged drains are yours to clear, unless the line is collapsed or damaged through no fault of yours.</li>
 <li>In freezing weather keep the heat at 55°F or higher, even when away.</li>
 <li>Away more than 7 days? Tell us in writing first.</li>
 <li>Contact us through the tenant portal or email; phone or text only when it's urgent.</li>
@@ -153,6 +154,7 @@ export function safetyPage(base: string, guide: Guide, env: Env, property: Prope
     html`<h1>${guide.title}</h1>
 <div class="card alert"><h2>Safety first</h2><p>${fillText(guide.safety, property.fields)}</p>
 <a class="btn danger" href="tel:${env.EMERGENCY_PHONE}">This is an emergency: call ${env.EMERGENCY_PHONE}</a></div>
+${guide.leaseNote ? html`<div class="card note"><p>${guide.leaseNote}</p></div>` : ""}
 <div class="card"><p>Before you submit a work order, did you check these? Most fixes take a few minutes, and you'll skip the wait for a technician.</p>
 <a class="btn primary" href="${base}/guide/${guide.id}?a=">I'm safe, let's check</a>
 <a class="btn" href="${base}/report/${guide.id}?a=skip">I've already tried the usual fixes</a></div>`,
@@ -194,6 +196,9 @@ ${walked?.history.length
 ${guide?.leaseNote ? html`<div class="card note"><p>${guide.leaseNote}</p></div>` : ""}
 <form class="card" method="post" action="${base}/report/${guide?.id ?? "other"}" enctype="multipart/form-data">
 <input type="hidden" name="a" value="${answers}">
+${guide?.drainLine
+  ? html`<label><input type="checkbox" name="drain_ack" value="1" required> I understand I'll be charged for clearing a slow or clogged drain, unless the line turns out to be collapsed or damaged through no fault of mine.</label>`
+  : ""}
 <label for="what">What's happening?</label>
 <textarea id="what" name="what" required placeholder="e.g. The disposal hums but won't spin, even after the reset button.">${guide ? `${guide.title}. ` : ""}</textarea>
 <label for="where">Where in the home? <small>e.g. kitchen sink, upstairs hall bathroom</small></label>

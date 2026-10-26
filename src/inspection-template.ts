@@ -37,6 +37,8 @@ const ROOM_ITEMS = {
 export interface RoomChoices {
   bedrooms: number;
   bathrooms: number;
+  /** Half baths get the bathroom list without the tub or shower. */
+  halfBathrooms?: number;
   dining: boolean;
   laundry: boolean;
   garage: boolean;
@@ -51,6 +53,7 @@ export function buildRooms(choices: RoomChoices): InspectionRoom[] {
   const count = (n: number) => Math.max(0, Math.min(8, Math.floor(n) || 0));
   const bedrooms = count(choices.bedrooms);
   const bathrooms = count(choices.bathrooms);
+  const halfBathrooms = count(choices.halfBathrooms ?? 0);
   return [
     room("Exterior", ROOM_ITEMS.exterior),
     room("Entry and living room", ROOM_ITEMS.living),
@@ -58,6 +61,9 @@ export function buildRooms(choices: RoomChoices): InspectionRoom[] {
     room("Kitchen", ROOM_ITEMS.kitchen),
     ...Array.from({ length: bedrooms }, (_, i) => room(bedrooms > 1 ? `Bedroom ${i + 1}` : "Bedroom", ROOM_ITEMS.bedroom)),
     ...Array.from({ length: bathrooms }, (_, i) => room(bathrooms > 1 ? `Bathroom ${i + 1}` : "Bathroom", ROOM_ITEMS.bathroom)),
+    ...Array.from({ length: halfBathrooms }, (_, i) =>
+      room(halfBathrooms > 1 ? `Half bath ${i + 1}` : "Half bath", ROOM_ITEMS.bathroom.filter((item) => item !== "Tub or shower")),
+    ),
     room("Hallways and stairs", ROOM_ITEMS.living.filter((i) => i !== "Closet")),
     ...(choices.laundry ? [room("Laundry", ROOM_ITEMS.laundry)] : []),
     ...(choices.garage ? [room("Garage and storage", ROOM_ITEMS.garage)] : []),
