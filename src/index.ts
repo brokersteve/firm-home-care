@@ -19,6 +19,7 @@ import { startRoutes } from "./start";
 import { trackerEmail, trackerRoutes } from "./tracker";
 import { sendEmail } from "./email";
 import { ICON_180, ICON_192, ICON_512 } from "./icons";
+import { appRoutes, isApp, registerPush, rememberTenant } from "./app";
 
 type Vars = { tenant: Tenant; property: Property; base: string };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -38,6 +39,8 @@ app.use("/t/:id/:sig/*", async (c, next) => {
   c.set("tenant", tenant);
   c.set("property", property);
   c.set("base", `/t/${encodeURIComponent(id)}/${sig}`);
+  // A Home Care link opened in the phone app signs that phone in, so the app opens here next time.
+  if (isApp(c)) await rememberTenant(c, tenant.id);
   await next();
 });
 
@@ -50,6 +53,9 @@ app.post("/t/:id/:sig/insurance", async (c) => {
   if (day) await c.env.DB.prepare("UPDATE tenants SET insurance_expires = ? WHERE id = ?").bind(day, c.var.tenant.id).run();
   return c.redirect(`${c.var.base}/?saved=insurance#insurance`, 303);
 });
+
+// The phone app's push token for this tenant.
+app.post("/t/:id/:sig/push", (c) => registerPush(c, c.var.tenant.id));
 
 // Home screen app: each tenant's manifest starts at their own page.
 app.get("/t/:id/:sig/manifest.webmanifest", (c) =>
@@ -306,6 +312,7 @@ app.route("/", inspectionRoutes);
 app.route("/", dispatchRoutes);
 app.route("/", startRoutes);
 app.route("/", trackerRoutes);
+app.route("/", appRoutes);
 
 
 async function runNightly(env: Env): Promise<void> {

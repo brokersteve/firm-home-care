@@ -1,0 +1,77 @@
+# Builds the FIRM Android app. Every push that touches mobile/ makes a test APK to install on an Android phone
+# (Actions > this run > Artifacts). Run it by hand with "release" ticked to make the Play Store upload (.aab).
+#
+# Secrets (Settings > Secrets and variables > Actions):
+#   GOOGLE_SERVICES_JSON        the google-services.json file from Firebase (needed: push won't start without it)
+#   ANDROID_KEYSTORE_BASE64     upload key, base64 of the .jks file (release only)
+#   ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD   (release only)
+name: Android app
+
+on:
+  push:
+    paths: ["mobile/**", ".github/workflows/android-app.yml"]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Build the signed Play Store bundle (.aab)"
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Firebase config
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::error::Add the GOOGLE_SERVICES_JSON secret first (Firebase console > Project settings > Your apps > Android)."
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+      - run: npm ci
+      - run: npm run sync -- android
+      - name: Test APK
+        if: ${{ !inputs.release }}
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.release }}
+        with:
+          name: firm-app-test-apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Play Store bundle
+        if: ${{ inputs.release }}
+        working-directory: mobile/android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file="$RUNNER_TEMP/upload.jks" \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD" \
+            -PversionCode=${{ github.run_number }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.release }}
+        with:
+          name: firm-app-play-store-aab
+          path: mobile/android/app/build/outputs/bundle/release/app-release.aab

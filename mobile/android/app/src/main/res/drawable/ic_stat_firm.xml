@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification icon: the FIRM house roof and chimney, white on transparent as Android requires. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M12,3 L1.6,11.2 L3,12.8 L5,11.2 L5,21 L19,21 L19,11.2 L21,12.8 L22.4,11.2 L18,7.7 L18,4 L15.5,4 L15.5,5.7 Z M8,13 L16,13 L16,15 L8,15 Z" />
+</vector>

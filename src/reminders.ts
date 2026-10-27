@@ -4,6 +4,7 @@ import { doneLink, homeLink } from "./links";
 import { RentecClient } from "./rentec";
 import { dueReminders } from "./schedule";
 import { activeTenants, listProperties } from "./store";
+import { pushToTenant } from "./push";
 
 export interface ReminderRun {
   sent: number;
@@ -17,7 +18,7 @@ export async function sendDueReminders(env: Env, today: string, client = RentecC
 
   for (const tenant of await activeTenants(env)) {
     const property = properties.get(tenant.property_id);
-    if (!property || !tenant.email) continue;
+    if (!property) continue;
 
     for (const { kind, dueDate } of dueReminders(tenant, property.fields, today)) {
       const already = await env.DB.prepare("SELECT 1 FROM reminders_sent WHERE tenant_id = ? AND kind = ? AND due_date = ?")
@@ -36,8 +37,27 @@ export async function sendDueReminders(env: Env, today: string, client = RentecC
         },
         env,
       );
+      // Email, plus a push to the FIRM app on any phone the tenant signed in on. Either one counts as sent.
+      let delivered = false;
+      const errors: string[] = [];
+      if (tenant.email) {
+        try {
+          await sendEmail(env, tenant.email, email.subject, html);
+          delivered = true;
+        } catch (err) {
+          errors.push(String(err));
+        }
+      }
       try {
-        await sendEmail(env, tenant.email, email.subject, html);
+        if (await pushToTenant(env, tenant.id, { title: email.subject, body: email.lines[0] ?? "", url: `${home}/` })) delivered = true;
+      } catch (err) {
+        errors.push(`push: ${err}`);
+      }
+      if (!delivered) {
+        if (errors.length) result.failed.push(`${tenant.id} ${kind}: ${errors.join("; ")}`);
+        continue;
+      }
+      try {
         await env.DB.prepare("INSERT INTO reminders_sent (tenant_id, kind, due_date, sent_at) VALUES (?, ?, ?, ?)")
           .bind(tenant.id, kind, dueDate, new Date().toISOString())
           .run();

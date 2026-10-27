@@ -1,0 +1,27 @@
+{
+  "name": "firm-app",
+  "version": "1.0.0",
+  "description": "The FIRM phone app for iPhone and Android: a native shell around F.I.R.M. Home Care",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "icons": "node make-icons.mjs && capacitor-assets generate --android --ios --iconBackgroundColor '#1f5f8b' --splashBackgroundColor '#1f5f8b' --iconBackgroundColorDark '#1f5f8b' --splashBackgroundColorDark '#1f5f8b'",
+    "sync": "node prepare.mjs && cap sync",
+    "android": "cap open android",
+    "ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor-firebase/messaging": "^8.5.2",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/app-launcher": "^8.0.1",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
+    "@capacitor/splash-screen": "^8.0.2",
+    "firebase": "^12.6.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.3"
+  }
+}

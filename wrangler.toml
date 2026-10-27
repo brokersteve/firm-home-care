@@ -32,6 +32,15 @@ OFFICE_EMAIL = "steve@firm.vip"
 # Texts to vendors only go out 8am to 9pm in this time zone.
 TIMEZONE = "America/New_York"
 TWILIO_FROM = ""
+# The FIRM phone app. WEBSITE_URL is linked from the app's sign-in page.
+WEBSITE_URL = ""
+APP_ID = "vip.firm.app"
+# Fill these in once the store accounts exist, so links in emails open the app: the Apple Developer Team ID,
+# and the app signing SHA-256 from Play Console > Test and release > App integrity.
+APPLE_TEAM_ID = ""
+ANDROID_CERT_SHA256 = ""
+# The test tenant Apple and Google sign in with during app review (its code is the APP_REVIEW_CODE secret).
+APP_REVIEW_EMAIL = ""
 PILOT_ADDRESSES = "619 Flynwood Pl; 425 Westham Ridge; 1620 Starbrook Dr; 2019 Stargrass; 3129 Kalamath; 5405 Hilltop; 7531 April Mist; 11312 Walland; 12474 Stone Garden; 15469 Asterwind"
 
 # Secrets (set with `wrangler secret put NAME`, never committed):
@@ -40,3 +49,5 @@ PILOT_ADDRESSES = "619 Flynwood Pl; 425 Westham Ridge; 1620 Starbrook Dr; 2019 S
 #   LINK_SECRET      random string used to sign tenant links
 #   ADMIN_TOKEN      password for the /admin page
 #   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN   texts to vendors
+#   FCM_SERVICE_ACCOUNT  Firebase service account JSON, for push notifications to the phone app
+#   APP_REVIEW_CODE      fixed sign-in code for the app review test tenant

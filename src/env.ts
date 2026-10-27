@@ -22,6 +22,19 @@ export interface Env {
   TWILIO_AUTH_TOKEN: string;
   /** The Twilio number texts come from, as +1XXXXXXXXXX. */
   TWILIO_FROM: string;
+  /** F.I.R.M.'s public website, linked from the app's sign-in page. */
+  WEBSITE_URL: string;
+  /** The phone app's ID in both stores, e.g. vip.firm.app. */
+  APP_ID: string;
+  /** Apple Developer Team ID; with it, email links open in the iPhone app. Empty = off. */
+  APPLE_TEAM_ID: string;
+  /** SHA-256 fingerprint(s) of the Android signing key (Play Console > App integrity). Empty = off. */
+  ANDROID_CERT_SHA256: string;
+  /** Firebase service account JSON for push notifications. Empty = no push. "log" prints pushes instead. */
+  FCM_SERVICE_ACCOUNT: string;
+  /** A test tenant's email and fixed code for Apple and Google app review. Empty = off. */
+  APP_REVIEW_EMAIL: string;
+  APP_REVIEW_CODE: string;
 }
 
 /** A property's home details by "HC ..." name, kept in its Rentec sticky note. */

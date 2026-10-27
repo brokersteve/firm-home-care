@@ -43,7 +43,8 @@ export function layout(title: string, body: Html, script = "", manifest = ""): H
 <link rel="icon" href="/icon-192.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="FIRM Home"><meta name="theme-color" content="#1f5f8b">
 ${manifest ? html`<link rel="manifest" href="${manifest}">` : ""}</head>
-<body><main><header><small>F.I.R.M. Home Care</small></header>${body}</main>${script ? raw(`<script>${script}</script>`) : ""}</body></html>`;
+<body><main><header><small>F.I.R.M. Home Care</small></header>${body}</main>${script ? raw(`<script>${script}</script>`) : ""}
+<script src="/app.js" defer></script></body></html>`;
 }
 
 export function emergencyCard(env: Env): Html {
