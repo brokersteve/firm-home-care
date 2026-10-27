@@ -33,7 +33,7 @@ OFFICE_EMAIL = "steve@firm.vip"
 TIMEZONE = "America/New_York"
 TWILIO_FROM = ""
 # The FIRM phone app. WEBSITE_URL is linked from the app's sign-in page.
-WEBSITE_URL = ""
+WEBSITE_URL = "https://www.firm.vip"
 APP_ID = "vip.firm.app"
 # Fill these in once the store accounts exist, so links in emails open the app: the Apple Developer Team ID,
 # and the app signing SHA-256 from Play Console > Test and release > App integrity.

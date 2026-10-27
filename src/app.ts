@@ -79,7 +79,10 @@ ${notice ? html`<p class="card note">${notice}</p>` : ""}
 <input type="text" id="who" name="who" required autocomplete="email" inputmode="email" placeholder="704-555-0100 or you@example.com">
 <button class="btn primary">Send my code</button></form></div>
 <div class="card"><h2>Water leaking?</h2><p>Turn the small valve under the sink or behind the toilet clockwise. If water is spraying or spreading, shut off the main water to the home, then call.</p></div>
-${env.WEBSITE_URL ? html`<a class="btn" href="${env.WEBSITE_URL}">Visit F.I.R.M.'s website</a>` : ""}`,
+${env.WEBSITE_URL
+  ? html`<div class="card"><h2>Looking for a home?</h2><p class="quiet">See F.I.R.M.'s homes for rent in the Charlotte area, or learn about us.</p>
+<a class="btn" href="${env.WEBSITE_URL}/rentals">Homes for rent</a><a class="btn" href="${env.WEBSITE_URL}">Visit ${env.WEBSITE_URL.replace(/^https?:\/\/(www\.)?/, "")}</a></div>`
+  : ""}`,
   );
 }
 
