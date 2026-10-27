@@ -1,6 +1,7 @@
 -- F.I.R.M.'s vendor list (Vendor Contact List, 10/26/2026). Billing, utility and listing accounts on that list
 -- (Account Adjustment, Charlotte Meck Utilities, Duke Energy, EcoCare, FIRM, Online CC Payment, SocialServe,
--- WLB Accounting) aren't repair vendors, so they're left out. Staff can add or edit vendors on the Vendors page.
+-- WLB Accounting) aren't repair vendors, so they're left out. All Maintenance Group is the same company as Real
+-- Creative Maintenance (Steve, 2026-10-27), so it isn't listed twice. Staff can add or edit vendors on the Vendors page.
 ALTER TABLE vendors ADD COLUMN contact TEXT;       -- person to ask for
 ALTER TABLE vendors ADD COLUMN office_phone TEXT;  -- a landline: shown for calling, never texted
 
@@ -11,7 +12,6 @@ UPDATE vendors SET name = 'Real Creative Maintenance', trade = 'In-house mainten
 INSERT INTO vendors (name, contact, trade, email, phone, office_phone) VALUES
   ('A-1 Wildlife Control', 'Allen Eckman', 'Wildlife', 'a1wildlifecontrol@gmail.com', NULL, '704-334-1922'),
   ('Admiring Painting Services', 'Mayra Herrera', 'Painting', 'mayraherrerajuarez@gmail.com', NULL, NULL),
-  ('All Maintenance Group', 'Marcelo Moreno', 'Maintenance', 'mmoreno5353@gmail.com', NULL, NULL),
   ('Appliance Medic', 'Gabby', 'Appliances', 'appliancemedic2013@gmail.com', NULL, '704-659-1871'),
   ('Boss Handyman Services, LLC', 'Frank Benton', 'Handyman', 'bosshandyman2025@gmail.com', '704-808-1845', NULL),
   ('BV Building Solutions, LLC', 'Brandon Laffin', 'Construction', 'brandon@bvbuildingsolutions.com', '845-214-8556', '845-214-8556'),
