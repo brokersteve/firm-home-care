@@ -17,9 +17,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Database ID
+        run: |
+          npx wrangler d1 list --json > d1.json
+          id=$(node -e "const d=require('./d1.json').find(x=>x.name==='firm-home-care');process.stdout.write(d?d.uuid:'')")
+          sed -i "s/REPLACE_WITH_D1_DATABASE_ID/$id/" wrangler.toml
       - name: Counts
         run: |
-          q() { npx wrangler d1 execute firm-home-care --remote --json --command "$1" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.stringify(JSON.parse(s)[0].results)))"; }
+          q() { npx wrangler d1 execute firm-home-care --remote --json --command "$1" 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.stringify(JSON.parse(s)[0].results))}catch{console.log('(could not read: '+s.slice(0,300)+')')}})"; }
           {
             echo "## Home Care data"
             echo "Last Rentec syncs: $(q 'SELECT started_at, finished_at, properties, tenants, substr(error, 1, 300) AS error FROM sync_runs ORDER BY id DESC LIMIT 3')"
