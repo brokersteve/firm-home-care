@@ -1,0 +1,33 @@
+# Read-only health check of the live Home Care database: how many homes, tenants and reminders the app has.
+# Shows counts and street addresses only, never tenant names, emails or phones. Run it by hand from Actions.
+name: Check Home Care
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Counts
+        run: |
+          q() { npx wrangler d1 execute firm-home-care --remote --json --command "$1" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.stringify(JSON.parse(s)[0].results)))"; }
+          {
+            echo "## Home Care data"
+            echo "Homes: $(q 'SELECT COUNT(*) AS n FROM properties')"
+            echo "Active tenants: $(q 'SELECT COUNT(*) AS n FROM tenants WHERE active = 1')"
+            echo "Tenants with an email: $(q "SELECT COUNT(*) AS n FROM tenants WHERE active = 1 AND email IS NOT NULL AND email != ''")"
+            echo "Reminders sent: $(q 'SELECT COUNT(*) AS n FROM reminders_sent')"
+            echo "Homes and active tenants per home:"
+            echo '```'
+            q "SELECT p.address, (SELECT COUNT(*) FROM tenants t WHERE t.property_id = p.id AND t.active = 1) AS tenants FROM properties p ORDER BY p.address"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
