@@ -22,6 +22,7 @@ jobs:
           q() { npx wrangler d1 execute firm-home-care --remote --json --command "$1" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.stringify(JSON.parse(s)[0].results)))"; }
           {
             echo "## Home Care data"
+            echo "Last Rentec syncs: $(q 'SELECT started_at, finished_at, properties, tenants, substr(error, 1, 300) AS error FROM sync_runs ORDER BY id DESC LIMIT 3')"
             echo "Homes: $(q 'SELECT COUNT(*) AS n FROM properties')"
             echo "Active tenants: $(q 'SELECT COUNT(*) AS n FROM tenants WHERE active = 1')"
             echo "Tenants with an email: $(q "SELECT COUNT(*) AS n FROM tenants WHERE active = 1 AND email IS NOT NULL AND email != ''")"
