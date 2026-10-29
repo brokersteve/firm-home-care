@@ -16,6 +16,12 @@ export interface Env {
   ADMIN_TOKEN: string;
   /** Where "sent to vendor" confirmations go, e.g. steve@firm.vip. */
   OFFICE_EMAIL: string;
+  /** The office cell: emergency work orders are texted here at any hour. Empty = email only. */
+  OFFICE_CELL: string;
+  /** Jobs expected to cost more than this need the owner's OK first (dollars). A home can have its own limit. */
+  OWNER_APPROVAL_LIMIT: string;
+  /** Rentec priority (1 to 5) for emergency, urgent, routine and tenant-responsibility work orders, e.g. "1,2,3,3". */
+  RENTEC_PRIORITIES: string;
   /** Local time zone for text quiet hours, e.g. America/New_York. */
   TIMEZONE: string;
   TWILIO_ACCOUNT_SID: string;
@@ -45,6 +51,8 @@ export interface Property {
   name: string;
   address: string;
   fields: PropertyFields;
+  /** This owner's approval limit, when it differs from OWNER_APPROVAL_LIMIT. Set in Home Care, not Rentec. */
+  approval_limit?: number | null;
 }
 
 export interface Tenant {
