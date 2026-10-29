@@ -1,0 +1,70 @@
+# Puts Home Care online on Cloudflare. Run it by hand: Actions > Deploy Home Care > Run workflow.
+# The first run creates the database and photo storage; later runs just update the code.
+#
+# Secret (Settings > Secrets and variables > Actions):
+#   CLOUDFLARE_API_TOKEN   "Edit Cloudflare Workers" template plus Account > D1 > Edit
+# Other secrets (Rentec key, Resend key, admin password) are set in Cloudflare itself, never here.
+name: Deploy Home Care
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Check the Cloudflare key
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Add the CLOUDFLARE_API_TOKEN secret first."
+            exit 1
+          fi
+          npx wrangler whoami
+      - name: Database
+        run: |
+          npx wrangler d1 list --json > d1.json
+          id=$(node -e "const l=require('./d1.json');const d=l.find(x=>x.name==='firm-home-care');process.stdout.write(d?d.uuid:'')")
+          if [ -z "$id" ]; then
+            npx wrangler d1 create firm-home-care
+            npx wrangler d1 list --json > d1.json
+            id=$(node -e "const l=require('./d1.json');process.stdout.write(l.find(x=>x.name==='firm-home-care').uuid)")
+          fi
+          sed -i "s/REPLACE_WITH_D1_DATABASE_ID/$id/" wrangler.toml
+          npx wrangler d1 migrations apply firm-home-care --remote
+      - name: Photo storage
+        run: |
+          if ! npx wrangler r2 bucket list | grep -q "firm-home-care-photos"; then
+            npx wrangler r2 bucket create firm-home-care-photos || {
+              echo "::error::Cloudflare wouldn't create photo storage (R2). Turn on R2 once in the Cloudflare dashboard (R2 Object Storage), then run this again."
+              exit 1
+            }
+          fi
+      - name: Web address
+        id: url
+        run: |
+          account=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(JSON.parse(s).result[0].id)}catch{}})")
+          sub=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$account/workers/subdomain" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(JSON.parse(s).result.subdomain||'')}catch{}})")
+          if [ -z "$sub" ]; then
+            echo "::error::This Cloudflare account has no workers.dev address yet. Open Workers & Pages in the Cloudflare dashboard once to pick one, then run this again."
+            exit 1
+          fi
+          echo "url=https://firm-home-care.$sub.workers.dev" >> "$GITHUB_OUTPUT"
+      - name: Deploy
+        run: npx wrangler deploy --var APP_URL:${{ steps.url.outputs.url }}
+      - name: Link secret
+        run: |
+          # Signs tenant links. Made once at random and kept; changing it would break every link already sent.
+          if ! npx wrangler secret list | grep -q '"LINK_SECRET"'; then
+            openssl rand -base64 33 | tr -d '\n' | npx wrangler secret put LINK_SECRET
+          fi
+      - name: Done
+        run: echo "Home Care is online at ${{ steps.url.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
