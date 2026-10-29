@@ -9,6 +9,8 @@ import { layout } from "./pages";
 import { sendText, textSendTime, toE164 } from "./sms";
 import { getProperty, getTenant } from "./store";
 import { RentecClient } from "./rentec";
+import type { Category, Tier } from "./triage";
+import { afterDispatch, approvalLimit, loadWorkOrder, needsOwner, suggestVendor, trackerPanel, type Status, type WaitingOn } from "./maintenance";
 
 export interface Vendor {
   id: number;
@@ -39,6 +41,23 @@ export interface WorkOrder {
   vendor_id: number | null;
   notes: string | null;
   sent_at: string | null;
+  tier: Tier;
+  category: Category | null;
+  summary: string | null;
+  flags: string | null;
+  started: string | null;
+  status: Status;
+  waiting_on: WaitingOn | null;
+  scheduled_on: string | null;
+  scheduled_time: string | null;
+  estimate: number | null;
+  owner_approved_at: string | null;
+  reviewed_at: string | null;
+  completed_at: string | null;
+  tenant_result: "fixed" | "still_broken" | null;
+  tenant_result_at: string | null;
+  rentec_status: string | null;
+  updated_at: string | null;
 }
 
 const escape = (s: string) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
@@ -125,6 +144,7 @@ export async function dispatchWorkOrder(env: Env, wo: WorkOrder, vendor: Vendor,
   await env.DB.prepare("UPDATE work_orders SET vendor_id = ?, notes = ?, sent_at = ? WHERE id = ?")
     .bind(vendor.id, notes || null, now.toISOString(), wo.id)
     .run();
+  await afterDispatch(env, wo, vendor, now);
   // Track it: one tracker row per work order, moved to the new vendor if it's sent again.
   const issued = now.toLocaleDateString("en-CA", { timeZone: env.TIMEZONE });
   const job = await env.DB.prepare("SELECT id FROM jobs WHERE work_order_id = ?").bind(wo.id).first<{ id: number }>();
@@ -185,33 +205,6 @@ const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "sh
 
 export const dispatchRoutes = new Hono<{ Bindings: Env }>();
 
-dispatchRoutes.get("/admin/workorders", async (c) => {
-  const { results } = await c.env.DB.prepare(
-    `SELECT w.id, w.title, w.created_at, w.sent_at, p.address, t.first_name, t.last_name, v.name AS vendor
-     FROM work_orders w JOIN properties p ON p.id = w.property_id LEFT JOIN tenants t ON t.id = w.tenant_id LEFT JOIN vendors v ON v.id = w.vendor_id
-     ORDER BY w.sent_at IS NOT NULL, w.created_at DESC LIMIT 100`,
-  ).all<{ id: number; title: string; created_at: string; sent_at: string | null; address: string; first_name: string | null; last_name: string | null; vendor: string | null }>();
-  return c.html(
-    layout(
-      "Work orders",
-      html`<h1>Work orders</h1>
-<p class="quiet">New requests from tenants are at the top. Open one to send it to maintenance or a vendor.</p>
-<div class="card"><table><tr><th>Property</th><th>Problem</th><th>Sent to</th></tr>
-${results.map(
-  (w) => html`<tr><td><a href="/admin/workorders/${w.id}">${w.address}</a><br><span class="quiet">${w.first_name ?? ""} ${w.last_name ?? ""} · ${when(w.created_at)}</span></td>
-<td>${w.title}</td><td>${w.vendor ? html`${w.vendor}<br><span class="quiet">${when(w.sent_at!)}</span>` : html`<strong>Not sent yet</strong>`}</td></tr>`,
-)}</table>${results.length ? "" : html`<p class="quiet">No work orders yet.</p>`}</div>
-<a class="btn primary" href="/admin/tracker">Work order tracker</a>
-<a class="btn" href="/admin/vendors">Vendors</a>
-<a class="quiet" href="/admin/">Back to admin</a>`,
-    ),
-  );
-});
-
-async function loadWorkOrder(env: Env, id: string): Promise<WorkOrder | null> {
-  return env.DB.prepare("SELECT * FROM work_orders WHERE id = ?").bind(Number(id) || 0).first<WorkOrder>();
-}
-
 dispatchRoutes.get("/admin/workorders/:id", async (c) => {
   const wo = await loadWorkOrder(c.env, c.req.param("id"));
   if (!wo) return c.text("Work order not found", 404);
@@ -219,17 +212,21 @@ dispatchRoutes.get("/admin/workorders/:id", async (c) => {
   const list = await vendors(c.env, true);
   const sentTo = wo.vendor_id ? (await vendors(c.env, false)).find((v) => v.id === wo.vendor_id) : null;
   const status = c.req.query("sent");
+  // Not sent yet: start with the vendor whose trade fits, else in-house maintenance. F.I.R.M. still picks and sends.
+  const selected = wo.vendor_id ?? suggestVendor(wo.category, list);
+  const overLimit = needsOwner(wo, approvalLimit(c.env, property));
   return c.html(
     layout(
       `Work order #${wo.id}`,
       html`<h1>${wo.title}</h1><p class="quiet">#${wo.id} · ${property?.address ?? ""} · ${when(wo.created_at)}</p>
 ${status ? html`<div class="card note"><p>${status}</p></div>` : ""}
 ${sentTo ? html`<p>Last sent to <strong>${sentTo.name}</strong> on ${when(wo.sent_at!)}.</p>` : ""}
+${await trackerPanel(c.env, wo, property)}
 <form method="post" class="card">
 <h2>${sentTo ? "Send again" : "Send to maintenance or a vendor"}</h2>
 <label for="vendor">Send to</label>
 <select id="vendor" name="vendor" required><option value="">Pick a vendor</option>${list.map(
-        (v) => html`<option value="${v.id}" data-email="${v.email ? 1 : 0}" data-cell="${v.phone ? 1 : 0}" data-office="${v.office_phone ?? ""}" ${v.id === wo.vendor_id ? "selected" : ""}>${v.name}${v.trade ? ` (${v.trade})` : ""}${!v.email && !v.phone ? " - no email or cell on file" : ""}</option>`,
+        (v) => html`<option value="${v.id}" data-email="${v.email ? 1 : 0}" data-cell="${v.phone ? 1 : 0}" data-office="${v.office_phone ?? ""}" ${v.id === selected ? "selected" : ""}>${v.name}${v.trade ? ` (${v.trade})` : ""}${!v.email && !v.phone ? " - no email or cell on file" : ""}</option>`,
       )}<option value="new">+ A new vendor (type their details)</option></select>
 <div id="new-vendor" hidden>
 <label for="nv-name">Vendor name</label><input type="text" id="nv-name" name="new_name">
@@ -240,8 +237,9 @@ ${sentTo ? html`<p>Last sent to <strong>${sentTo.name}</strong> on ${when(wo.sen
 <p class="quiet">They're added to your vendor list so they're in the dropdown next time. Give an email, a cell, or both.</p></div>
 <label for="notes">Notes for the vendor <small>Gate code, parts, how urgent, who to bill</small></label>
 <textarea id="notes" name="notes">${wo.notes ?? ""}</textarea>
+${overLimit ? html`<p class="card alert">The expected cost is over the owner's approval limit and the owner hasn't approved yet. Ask for a quote only, or get the owner's OK first.</p>` : ""}
 <button class="btn primary">Send now</button>
-<p class="quiet">They get an email right away and a text. Texts go out 8am to 9pm; at other times the text waits until 8am. You get a copy by email.</p></form>
+<p class="quiet">${!wo.vendor_id && selected ? "Suggested from the kind of repair; change it if someone else fits better. " : ""}They get an email right away and a text. Texts go out 8am to 9pm; at other times the text waits until 8am. You get a copy by email.</p></form>
 <div class="card"><h2>The tenant's request</h2><p>Phone: <a href="tel:${wo.contact_phone}">${wo.contact_phone}</a><br>Email: ${wo.contact_email}</p>
 <pre style="white-space:pre-wrap;font:inherit">${wo.description}</pre></div>
 <a class="quiet" href="/admin/workorders">Back to work orders</a>`,

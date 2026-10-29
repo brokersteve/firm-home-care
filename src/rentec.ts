@@ -30,6 +30,13 @@ export interface RentecTenant {
   phone: string | null;
 }
 
+export interface RentecWorkOrder {
+  id: string;
+  /** OpenU, OpenA, Parts, Work, Finalized or Closed. */
+  status: string;
+  resolved: string | null;
+}
+
 export interface RentecLease {
   tenantId: string;
   propertyId: string;
@@ -133,7 +140,7 @@ export class RentecClient {
   }
 
   /** Files an unassigned work order on the tenant's property. Returns Rentec's work order ID. */
-  async createWorkOrder(input: { propertyId: string; tenantId: string; title: string; description: string }): Promise<string> {
+  async createWorkOrder(input: { propertyId: string; tenantId: string; title: string; description: string; priority?: number; privateNotes?: string }): Promise<string> {
     const body = await this.send("POST", PATHS.workOrders, {
       property_id: Number(input.propertyId),
       renter_id: Number(input.tenantId),
@@ -141,6 +148,9 @@ export class RentecClient {
       short_desc: input.title.slice(0, 100),
       description: input.description,
       status: "OpenU",
+      ...(input.priority ? { priority: input.priority } : {}),
+      // Triage (urgency, who-pays flags) is for staff only: the description is shown to the tenant.
+      ...(input.privateNotes ? { private_notes: input.privateNotes } : {}),
       date_received: new Date().toISOString().slice(0, 10),
       tenant_view: true,
       email_manager: true,
@@ -148,6 +158,15 @@ export class RentecClient {
     // 201 wraps the work order in data; a 200 duplicate returns it bare.
     const wo = (body.data ?? body) as Json;
     return String(wo.workorder_id ?? "");
+  }
+
+  /** Work orders received in the last `days` days, with their status, for the tracker's status updates. */
+  async workOrders(days = 90): Promise<RentecWorkOrder[]> {
+    return (await this.list(`${PATHS.workOrders}?age=${days}d`)).map((w) => ({
+      id: str(w, "workorder_id"),
+      status: str(w, "status"),
+      resolved: toDay(w.date_resolved),
+    }));
   }
 
   /** Adds a note to a work order. Private notes are hidden from the tenant. */

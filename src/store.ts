@@ -7,10 +7,11 @@ interface PropertyRow {
   name: string;
   address: string;
   fields: string;
+  approval_limit?: number | null;
 }
 
 function toProperty(row: PropertyRow): Property {
-  return { id: row.id, name: row.name, address: row.address, fields: JSON.parse(row.fields) };
+  return { id: row.id, name: row.name, address: row.address, fields: JSON.parse(row.fields), approval_limit: row.approval_limit ?? null };
 }
 
 export async function getTenant(env: Env, id: string): Promise<Tenant | null> {
