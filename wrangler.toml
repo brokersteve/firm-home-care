@@ -4,8 +4,9 @@ compatibility_date = "2026-10-01"
 
 # Nightly Rentec sync at 07:00 UTC, then reminders go out.
 [triggers]
-# 7:00 UTC: nightly Rentec sync and reminders. Every 15 minutes: send texts held overnight.
-crons = ["0 7 * * *", "*/15 * * * *"]
+# 7:00 UTC: nightly Rentec sync and reminders. Every 15 minutes: send texts held overnight and read work order
+# status from Rentec. 22:00 UTC (6pm EDT, 5pm EST): the end-of-day work order summary.
+crons = ["0 7 * * *", "*/15 * * * *", "0 22 * * *"]
 
 [[d1_databases]]
 binding = "DB"
@@ -29,6 +30,14 @@ PILOT_PROPERTY_IDS = ""
 # The 10 pilot homes (Steve, 2026-10-26). Matched on house number and street name.
 # "Sent to vendor" confirmations go here; an Outlook rule files them by subject.
 OFFICE_EMAIL = "steve@firm.vip"
+# Emergency work orders are texted to this cell at any hour (needs Twilio). Empty = email only.
+OFFICE_CELL = ""
+# Jobs expected to cost more than this need the owner's OK first. Default until Steve sets it from the management
+# agreement; a home with a different owner limit can have its own on the work order page.
+OWNER_APPROVAL_LIMIT = "500"
+# Rentec work order priority (1 to 5) for emergency, urgent, routine and tenant-responsibility requests.
+# Assumes 1 is the highest in Rentec; reverse it ("5,4,3,3") if Rentec shows it the other way round.
+RENTEC_PRIORITIES = "1,2,3,3"
 # Texts to vendors only go out 8am to 9pm in this time zone.
 TIMEZONE = "America/New_York"
 TWILIO_FROM = ""

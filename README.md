@@ -24,6 +24,9 @@ fields), tenants and leases from the Rentec Open API, then sends whatever remind
 | `src/inspection.ts`, `src/inspection-template.ts`, `src/report.ts` | Inspections, the room checklist, and the PDF report. |
 | `src/photos.ts` | Photo storage (Cloudflare R2) and the browser-side photo shrinking. |
 | `src/pages.ts`, `src/admin.ts` | Tenant pages and the admin dashboard. |
+| `src/triage.ts` | Work order triage: category, urgency tier (Emergency, Urgent, Routine, Tenant responsibility), review flags, response targets. Plain rules F.I.R.M. can edit. |
+| `src/maintenance.ts` | The maintenance tracker: tenant status page and close-out, staff work order board, status/waiting-on/owner approval, office alerts, status read back from Rentec, end-of-day summary. |
+| `src/dispatch.ts`, `src/tracker.ts` | Sending a work order to a vendor, and the vendor job tracker (cost, owner price, invoice, paid, billed). |
 | `src/index.ts` | Routes and the nightly scheduled job. |
 | `dev/mock-rentec.mjs` | A fake Rentec API with two sample homes, for running locally. |
 
@@ -62,6 +65,17 @@ npm run typecheck
 Name: FIRM Home Care. Read: Properties, Tenants, Leases, Work Orders, Lookup. Write: Properties (home details in the
 sticky note), Work Orders, Messages, Files (inspection reports, work order photos). Nothing else. The key is only ever
 stored as a Cloudflare secret and sent as the `X-API-Key` header (see Rentec's openapi.yaml).
+
+## Maintenance tracker
+
+Every tenant request is triaged when it comes in: urgency comes from the repair, not the tenant's pick (detectors
+within 24 hours, doors, locks and windows that won't secure the same hour, a stuck disposal routine). Emergencies and
+urgent requests email the office at once (emergencies also text `OFFICE_CELL`); routine ones are in the end-of-day
+summary (22:00 UTC). Triage goes in the Rentec work order's private notes, so the tenant never sees "tenant
+responsibility" flags. Staff move each request along on its work order page (status, visit date, waiting on, owner
+approval over `OWNER_APPROVAL_LIMIT`), and the tenant follows it at `/t/.../requests` and taps Fixed or Still a
+problem at the end. Every 15 minutes the app reads work order status from Rentec (Assigned, Parts, Work, Closed).
+Rentec's API can't change a work order's status, so closing it in Rentec stays a manual step.
 
 Renters insurance end dates aren't in Rentec's API, so tenants enter them on their Home Care page and staff can
 correct them on the admin Tenants page. The sync never overwrites them.

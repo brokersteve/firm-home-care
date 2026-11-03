@@ -3,7 +3,7 @@ import { money, summarize, type Job } from "../src/tracker";
 
 const job = (o: Partial<Job>): Job => ({
   id: 1, work_order_id: null, vendor_id: 1, issued_on: "2026-10-01", property: "1 A St", work: "Fix", cost: null,
-  owner_price: null, completed_on: null, vendor_paid_on: null, notes: null, ...o,
+  owner_price: null, completed_on: null, vendor_paid_on: null, notes: null, invoice_number: null, owner_billed_on: null, ...o,
 });
 const vendors = [
   { id: 1, name: "Real Creative Maintenance", contact: null, phone: null, office_phone: null, sort_order: 1 },

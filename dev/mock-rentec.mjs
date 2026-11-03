@@ -37,6 +37,7 @@ const leases = [
   { id: "lease:2", lease_id: 2, renter_id: 502, property_id: 102, move_in: "2026-10-25", lease_begin: "2026-10-25", lease_end: "2027-10-31" },
 ];
 const posted = [];
+const workOrders = [];
 let nextWo = 9001;
 
 createServer(async (req, res) => {
@@ -53,7 +54,7 @@ createServer(async (req, res) => {
   if (req.method === "GET" && route === "/properties") return list(properties);
   if (req.method === "GET" && route === "/tenants") return list(tenants);
   if (req.method === "GET" && route === "/leases") return list(leases);
-  if (req.method === "GET" && route === "/work_orders") return list([]);
+  if (req.method === "GET" && route === "/work_orders") return list(workOrders);
   const sticky = route.match(/^\/properties\/(\d+)\/sticky_note$/);
   if (sticky) {
     if (!(sticky[1] in stickyNotes)) return send({ error: "Property not found" }, 404);
@@ -62,12 +63,20 @@ createServer(async (req, res) => {
   }
   if (req.method === "POST" && route === "/work_orders") {
     const id = nextWo++;
-    return send({ summary: { records: 1 }, data: { id: `workorder:${id}`, workorder_id: id, status: "OpenU", ...JSON.parse(body) } }, 201);
+    const wo = { id: `workorder:${id}`, workorder_id: id, status: "OpenU", ...JSON.parse(body) };
+    workOrders.push(wo);
+    return send({ summary: { records: 1 }, data: wo }, 201);
   }
   if (req.method === "POST" && /^\/work_orders\/\d+\/notes$/.test(route)) return send({ summary: { records: 1 }, data: { note_id: posted.length } }, 201);
   if (req.method === "POST" && route === "/messages") return send({ summary: { records: 1 }, data: { email_id: posted.length } }, 201);
   if (req.method === "POST" && route === "/files") return send({ success: true, file_id: 7000 + posted.length, filename: "upload" }, 201);
   if (route === "/_posted") return send(posted);
+  // Play staff in Rentec: /_status?id=9001&status=OpenA (or Parts, Work, Closed).
+  if (route === "/_status") {
+    const wo = workOrders.find((w) => w.workorder_id === Number(url.searchParams.get("id")));
+    if (wo) wo.status = url.searchParams.get("status");
+    return send(wo ?? { error: "not found" }, wo ? 200 : 404);
+  }
   if (route === "/_sticky") return send(stickyNotes);
   res.writeHead(404).end();
 }).listen(8788, () => console.log("Mock Rentec on http://localhost:8788/api/v3"));

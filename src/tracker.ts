@@ -6,6 +6,7 @@ import { html } from "hono/html";
 import { daysBetween } from "./dates";
 import type { Env } from "./env";
 import { layout } from "./pages";
+import { loadWorkOrder, setStatus } from "./maintenance";
 
 export interface Job {
   id: number;
@@ -19,6 +20,8 @@ export interface Job {
   completed_on: string | null;
   vendor_paid_on: string | null;
   notes: string | null;
+  invoice_number: string | null;
+  owner_billed_on: string | null;
 }
 
 interface VendorRow {
@@ -116,7 +119,7 @@ ${g.jobs.map((j) => {
   const age = j.completed_on ? 0 : daysBetween(j.issued_on, day);
   return html`<tr${j.completed_on ? html` class="done"` : ""}><td>${shortDay(j.issued_on)}${age >= STALE_DAYS ? html` <span title="Open ${age} days">⚠</span>` : ""}</td>
 <td><a href="/admin/tracker/${j.id}">${j.property}</a></td><td>${j.work}</td><td class="n">${money(j.cost)}</td><td class="n">${money(j.owner_price)}</td>
-<td>${j.completed_on ? html`${shortDay(j.completed_on)}${j.cost && !j.vendor_paid_on ? html`<br><small>unpaid</small>` : ""}` : html`<small>${age}d open</small>`}</td></tr>`;
+<td>${j.completed_on ? html`${shortDay(j.completed_on)}${j.cost && !j.vendor_paid_on ? html`<br><small>unpaid</small>` : ""}${j.owner_price && !j.owner_billed_on ? html`<br><small>owner not billed</small>` : ""}` : html`<small>${age}d open</small>`}</td></tr>`;
 })}</table></div></div>`,
 )}
 ${groups.length ? "" : html`<p class="quiet">No jobs yet. Send a work order to a vendor, or add a job.</p>`}
@@ -144,11 +147,12 @@ ${saved ? html`<div class="card note"><p>Saved.</p></div>` : ""}
 <label for="vendor_id">Vendor</label><select id="vendor_id" name="vendor_id" required>${await vendorOptions(env, job.vendor_id ?? null)}</select>
 ${f("issued_on", "Date issued", "date", "required")}${f("property", "Property", "text", "required")}${f("work", "Work", "text", "required")}
 ${f("cost", "Cost (what we pay the vendor)", "number", 'step="0.01" min="0" inputmode="decimal"')}${f("owner_price", "Owner price (what the owner is charged)", "number", 'step="0.01" min="0" inputmode="decimal"')}
-${f("completed_on", "Complete date", "date")}${f("vendor_paid_on", "Vendor paid on", "date")}
+${f("completed_on", "Complete date", "date")}${f("invoice_number", "Vendor invoice #")}${f("vendor_paid_on", "Vendor paid on", "date")}${f("owner_billed_on", "Owner billed on", "date")}
 <label for="notes">Notes</label><textarea id="notes" name="notes">${job.notes ?? ""}</textarea>
 <button class="btn primary">Save</button>
 ${job.id && !job.completed_on ? html`<button class="btn" name="quick" value="done">Mark done today</button>` : ""}
 ${job.id && job.completed_on && !job.vendor_paid_on ? html`<button class="btn" name="quick" value="paid">Mark vendor paid today</button>` : ""}
+${job.id && job.completed_on && job.owner_price && !job.owner_billed_on ? html`<button class="btn" name="quick" value="billed">Mark owner billed today</button>` : ""}
 </form>
 ${job.work_order_id ? html`<a class="btn" href="/admin/workorders/${job.work_order_id}">Open the tenant's work order</a>` : ""}
 <a class="quiet" href="/admin/tracker">Back to the tracker</a>`,
@@ -169,6 +173,8 @@ function jobFields(body: Record<string, unknown>) {
     completed_on: day("completed_on"),
     vendor_paid_on: day("vendor_paid_on"),
     notes: s("notes").slice(0, 2000) || null,
+    invoice_number: s("invoice_number").slice(0, 60) || null,
+    owner_billed_on: day("owner_billed_on"),
   };
 }
 
@@ -178,10 +184,10 @@ trackerRoutes.post("/admin/tracker/new", async (c) => {
   const j = jobFields(await c.req.parseBody());
   if (!j.vendor_id || !j.issued_on || !j.property || !j.work) return c.redirect("/admin/tracker/new", 303);
   const row = await c.env.DB.prepare(
-    `INSERT INTO jobs (vendor_id, issued_on, property, work, cost, owner_price, completed_on, vendor_paid_on, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+    `INSERT INTO jobs (vendor_id, issued_on, property, work, cost, owner_price, completed_on, vendor_paid_on, notes, invoice_number, owner_billed_on)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
   )
-    .bind(j.vendor_id, j.issued_on, j.property, j.work, j.cost, j.owner_price, j.completed_on, j.vendor_paid_on, j.notes)
+    .bind(j.vendor_id, j.issued_on, j.property, j.work, j.cost, j.owner_price, j.completed_on, j.vendor_paid_on, j.notes, j.invoice_number, j.owner_billed_on)
     .first<{ id: number }>();
   return c.redirect(`/admin/tracker/${row!.id}?saved=1`, 303);
 });
@@ -199,12 +205,20 @@ trackerRoutes.post("/admin/tracker/:id", async (c) => {
   const day = today(c.env);
   if (body["quick"] === "done") j.completed_on = day;
   if (body["quick"] === "paid") j.vendor_paid_on = day;
+  if (body["quick"] === "billed") j.owner_billed_on = day;
   if (!j.vendor_id || !j.issued_on || !j.property || !j.work) return c.redirect(`/admin/tracker/${id}`, 303);
+  const before = await c.env.DB.prepare("SELECT work_order_id, completed_on FROM jobs WHERE id = ?").bind(id).first<Pick<Job, "work_order_id" | "completed_on">>();
   await c.env.DB.prepare(
-    `UPDATE jobs SET vendor_id = ?, issued_on = ?, property = ?, work = ?, cost = ?, owner_price = ?, completed_on = ?, vendor_paid_on = ?, notes = ? WHERE id = ?`,
+    `UPDATE jobs SET vendor_id = ?, issued_on = ?, property = ?, work = ?, cost = ?, owner_price = ?, completed_on = ?, vendor_paid_on = ?, notes = ?,
+       invoice_number = ?, owner_billed_on = ? WHERE id = ?`,
   )
-    .bind(j.vendor_id, j.issued_on, j.property, j.work, j.cost, j.owner_price, j.completed_on, j.vendor_paid_on, j.notes, id)
+    .bind(j.vendor_id, j.issued_on, j.property, j.work, j.cost, j.owner_price, j.completed_on, j.vendor_paid_on, j.notes, j.invoice_number, j.owner_billed_on, id)
     .run();
+  // A job marked done here completes the tenant's work order too, so they're asked whether it's fixed.
+  if (j.completed_on && !before?.completed_on && before?.work_order_id) {
+    const wo = await loadWorkOrder(c.env, before.work_order_id);
+    if (wo && wo.status !== "completed") await setStatus(c.env, wo, "completed");
+  }
   return c.redirect(body["quick"] ? "/admin/tracker" : `/admin/tracker/${id}?saved=1`, 303);
 });
 

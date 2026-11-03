@@ -5,7 +5,8 @@ import { DIAGRAMS } from "./diagrams";
 import type { Env, Property, Tenant } from "./env";
 import { filters } from "./fields";
 import { SHRINK_PHOTOS_SCRIPT } from "./photos";
-import { FIXED, GUIDES, WORK_ORDER, fillText, suggestions, type Guide, type Walk } from "./guides";
+import { EMERGENCY, FIXED, GUIDES, WORK_ORDER, fillText, suggestions, type Guide, type Walk } from "./guides";
+import { FOLLOW_UPS, STARTED } from "./triage";
 
 type Html = HtmlEscapedString | Promise<HtmlEscapedString>;
 
@@ -116,7 +117,7 @@ ${saved ? html`<p class="quiet"><strong>Saved.</strong> Thanks!</p>` : ""}
 <a class="btn${urgent ? " primary" : ""}" href="${env.RESIDENT_CONNECT_URL}">Upload my policy</a></div>`;
 }
 
-export function homePage(env: Env, base: string, tenant: Tenant, property: Property, insuranceSaved = false): Html {
+export function homePage(env: Env, base: string, tenant: Tenant, property: Property, insuranceSaved = false, openRequests = 0): Html {
   const filterList = filters(property.fields);
   return layout(
     "Home",
@@ -131,7 +132,8 @@ ${emergencyCard(env)}
 <div class="card"><h2>Something not working?</h2>
 <p class="quiet">Before you submit a work order, let's check a few quick things. Many problems take two minutes to fix.</p>
 ${searchBox(base)}
-<a class="btn" href="${base}/help">See common problems</a></div>
+<a class="btn" href="${base}/help">See common problems</a>
+${openRequests ? html`<a class="btn primary" href="${base}/requests">My repair requests (${openRequests} open)</a>` : html`<a class="quiet" href="${base}/requests">My repair requests</a>`}</div>
 <div class="card"><h2>Emergency guide for your home</h2>${infoList(property, [
       ["Main water shutoff", "HC Water Shutoff"],
       ["Gas shutoff", "HC Gas Shutoff"],
@@ -247,6 +249,10 @@ ${walked?.history.length
 <p class="quiet">We'll send these with your request so the technician doesn't repeat them.</p></div>`
   : ""}
 ${guide?.leaseNote ? html`<div class="card note"><p>${guide.leaseNote}</p></div>` : ""}
+${walked?.at === EMERGENCY
+  ? html`<div class="card alert"><h2>Call first</h2><p>If you haven't called yet, call our emergency line now. Then send the details and photos here so the technician has them.</p>
+<a class="btn danger" href="tel:${env.EMERGENCY_PHONE}">Call ${env.EMERGENCY_PHONE}</a></div>`
+  : ""}
 <form class="card" method="post" action="${base}/report/${guide?.id ?? "other"}" enctype="multipart/form-data">
 <input type="hidden" name="a" value="${answers}">
 ${error ? html`<p class="card alert">${error}</p>` : ""}
@@ -257,6 +263,13 @@ ${guide?.drainLine
 <textarea id="what" name="what" required placeholder="e.g. The disposal hums but won't spin, even after the reset button.">${guide ? `${guide.title}. ` : ""}</textarea>
 <label for="where">Where in the home? <small>e.g. kitchen sink, upstairs hall bathroom</small></label>
 <input type="text" id="where" name="where">
+${guide && FOLLOW_UPS[guide.id]
+  ? html`<label for="follow_up">${FOLLOW_UPS[guide.id]!.question}</label><select id="follow_up" name="follow_up" required><option value="">Pick one</option>
+${FOLLOW_UPS[guide.id]!.options.map((o) => html`<option>${o.label}</option>`)}</select>`
+  : ""}
+<label for="started">When did it start?</label>
+<select id="started" name="started">${STARTED.map((s) => html`<option>${s}</option>`)}</select>
+${walked?.history.length ? "" : html`<label for="tried">Anything you've already tried? <small>Optional</small></label><textarea id="tried" name="tried" style="min-height:64px"></textarea>`}
 ${photoPicker("photos", "Photos of the problem", `${guide ? `Take a photo of ${guide.photoHint}.` : "A photo or two helps us bring the right parts."} Up to 5.`, 5)}
 ${guide?.appliance
   ? photoPicker("tag", "Photo of the model and serial tag", "Only if it's easy to see: often inside the door, on the side or behind a front panel. Please don't move the appliance.", 1)
@@ -319,12 +332,14 @@ export function endingPage(base: string, title: string, message: string, env: En
   );
 }
 
-export function emergencyEnding(base: string, env: Env): Html {
+/** reportUrl: after calling, the tenant can send the details and photos too (filed as an emergency work order). */
+export function emergencyEnding(base: string, env: Env, reportUrl = ""): Html {
   return endingPage(
     base,
     "Call us now",
     "This needs attention right away. Please call our emergency maintenance line.",
     env,
-    html`<a class="btn danger" href="tel:${env.EMERGENCY_PHONE}">Call ${env.EMERGENCY_PHONE}</a>`,
+    html`<a class="btn danger" href="tel:${env.EMERGENCY_PHONE}">Call ${env.EMERGENCY_PHONE}</a>
+${reportUrl ? html`<p class="quiet">After you call, you can send us the details and photos too.</p><a class="btn" href="${reportUrl}">Send the details</a>` : ""}`,
   );
 }
