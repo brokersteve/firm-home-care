@@ -37,7 +37,7 @@ WEBSITE_URL = "https://www.firm.vip"
 APP_ID = "vip.firm.app"
 # Fill these in once the store accounts exist, so links in emails open the app: the Apple Developer Team ID,
 # and the app signing SHA-256 from Play Console > Test and release > App integrity.
-APPLE_TEAM_ID = ""
+APPLE_TEAM_ID = "3K4LDNXAPY"
 ANDROID_CERT_SHA256 = ""
 # The test tenant Apple and Google sign in with during app review (its code is the APP_REVIEW_CODE secret).
 APP_REVIEW_EMAIL = ""
