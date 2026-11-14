@@ -30,7 +30,15 @@ jobs:
           P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           printf '%s' "$PLIST" > ios/App/App/GoogleService-Info.plist
-          printf '%s' "$P8" > "$RUNNER_TEMP/AuthKey.p8"
+          # Pasted keys can pick up Windows line endings or lose the last newline; Apple's parser rejects both.
+          printf '%s\n' "$P8" | tr -d '\r' | sed '/^[[:space:]]*$/d' > "$RUNNER_TEMP/AuthKey.p8"
+          # Shape check only (never prints the key): it must be one BEGIN line, base64 lines, one END line.
+          f="$RUNNER_TEMP/AuthKey.p8"
+          echo "Key file: $(wc -c < "$f") bytes, $(wc -l < "$f") lines; BEGIN lines: $(grep -c 'BEGIN PRIVATE KEY' "$f" || true); END lines: $(grep -c 'END PRIVATE KEY' "$f" || true)"
+          if ! grep -q 'BEGIN PRIVATE KEY' "$f" || ! grep -q 'END PRIVATE KEY' "$f"; then
+            echo "::error::The ASC_KEY_P8 secret isn't a whole .p8 key. Open AuthKey_XXXX.p8 in Notepad, copy everything from -----BEGIN to END PRIVATE KEY-----, and paste it into the secret again."
+            exit 1
+          fi
       - run: npm ci
       - run: npm run sync -- ios
       - name: Archive
