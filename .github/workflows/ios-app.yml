@@ -45,6 +45,9 @@ jobs:
           fi
       - run: npm ci
       - run: npm run sync -- ios
+      # Archive with a placeholder (ad-hoc) signature: automatic development signing needs a registered
+      # test device, which we don't have. The export step below re-signs it for the App Store using
+      # Apple's cloud-managed distribution certificate, keeping the app's entitlements.
       - name: Archive
         working-directory: mobile/ios/App
         run: |
@@ -54,8 +57,8 @@ jobs:
             -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
             -authenticationKeyID "${{ secrets.ASC_KEY_ID }}" \
             -authenticationKeyIssuerID "${{ secrets.ASC_ISSUER_ID }}" \
-            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" CODE_SIGN_STYLE=Automatic \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="-" AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             archive
       - name: Upload to TestFlight
