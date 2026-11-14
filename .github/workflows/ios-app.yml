@@ -10,6 +10,14 @@ name: iPhone app
 
 on:
   workflow_dispatch:
+    inputs:
+      app_url:
+        description: "Home Care address the app opens (home.firm.vip once it's connected)"
+        default: "https://firm-home-care.steve-26b.workers.dev"
+
+env:
+  # Pushes (no input) fall back to the free workers.dev address until home.firm.vip is connected.
+  FIRM_APP_URL: ${{ inputs.app_url || 'https://firm-home-care.steve-26b.workers.dev' }}
 
 jobs:
   build:
