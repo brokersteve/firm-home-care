@@ -19,6 +19,13 @@ jobs:
         working-directory: mobile
     steps:
       - uses: actions/checkout@v4
+      # App Store Connect only accepts apps built with Xcode 26 (iOS 26 SDK) or newer.
+      - name: Pick Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          x=$(ls -d /Applications/Xcode_2[6-9]*.app 2>/dev/null | grep -iv beta | sort -V | tail -1)
+          [ -n "$x" ] || { echo "::error::No Xcode 26 or newer on this runner"; exit 1; }
+          sudo xcode-select -s "$x" && xcodebuild -version
       - uses: actions/setup-node@v4
         with:
           node-version: 22
