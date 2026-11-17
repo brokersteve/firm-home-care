@@ -43,3 +43,14 @@ describe("app links", () => {
     expect(google[0].target.sha256_cert_fingerprints).toEqual(["AA:BB"]);
   });
 });
+
+describe("Android test download", () => {
+  it("serves the test APK from storage, or 404 before the first build", async () => {
+    const none = { PHOTOS: { get: async () => null } };
+    expect((await appRoutes.request("/app/android.apk", {}, none)).status).toBe(404);
+    const some = { PHOTOS: { get: async (k: string) => (k === "downloads/firm-test.apk" ? { body: "apk" } : null) } };
+    const res = await appRoutes.request("/app/android.apk", {}, some);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/vnd.android.package-archive");
+  });
+});

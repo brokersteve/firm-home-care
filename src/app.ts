@@ -272,3 +272,16 @@ appRoutes.get("/.well-known/assetlinks.json", (c) => {
     },
   ]);
 });
+
+// Test copy of the Android app, for staff to install before it's on Google Play. The Android build puts it in R2.
+appRoutes.get("/app/android.apk", async (c) => {
+  const object = await c.env.PHOTOS.get("downloads/firm-test.apk");
+  if (!object) return c.notFound();
+  return new Response(object.body, {
+    headers: {
+      "content-type": "application/vnd.android.package-archive",
+      "content-disposition": 'attachment; filename="FIRM-test.apk"',
+      "cache-control": "no-store",
+    },
+  });
+});

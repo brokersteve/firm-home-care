@@ -1,5 +1,5 @@
 # Builds the FIRM Android app. Every push that touches mobile/ makes a test APK to install on an Android phone
-# (Actions > this run > Artifacts). Run it by hand with "release" ticked to make the Play Store upload (.aab).
+# (Actions > this run > Artifacts, and on main also at <Home Care>/app/android.apk). Run it by hand with "release" ticked to make the Play Store upload (.aab).
 #
 # Secrets (Settings > Secrets and variables > Actions):
 #   GOOGLE_SERVICES_JSON        the google-services.json file from Firebase (needed: push won't start without it)
@@ -61,6 +61,17 @@ jobs:
         with:
           name: firm-app-test-apk
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+      # Also publish it at <Home Care>/app/android.apk so staff can install it with one tap on the phone.
+      - name: Publish test APK
+        if: ${{ !inputs.release && github.ref == 'refs/heads/main' }}
+        working-directory: .
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          npm ci
+          npx wrangler r2 object put firm-home-care-photos/downloads/firm-test.apk --remote \
+            --file mobile/android/app/build/outputs/apk/debug/app-debug.apk \
+            --content-type application/vnd.android.package-archive
       - name: Play Store bundle
         if: ${{ inputs.release }}
         working-directory: mobile/android
