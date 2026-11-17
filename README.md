@@ -23,6 +23,7 @@ fields), tenants and leases from the Rentec Open API, then sends whatever remind
 | `src/fields.ts` | Every home detail (`HC ...` names, sticky-note labels), used by the home details form, emails and guides. |
 | `src/inspection.ts`, `src/inspection-template.ts`, `src/report.ts` | Inspections, the room checklist, and the PDF report. |
 | `src/photos.ts` | Photo storage (Cloudflare R2) and the browser-side photo shrinking. |
+| `src/messages.ts`, `src/visits.ts` | Tenant and technician chat on each work order: the tech's no-login page (`/tech/...`, linked in the dispatch email) with "On my way" and visit times (weekdays 8am to 5pm, no holidays), push or email notices, private notes on the Rentec work order. |
 | `src/pages.ts`, `src/admin.ts` | Tenant pages and the admin dashboard. |
 | `src/index.ts` | Routes and the nightly scheduled job. |
 | `dev/mock-rentec.mjs` | A fake Rentec API with two sample homes, for running locally. |

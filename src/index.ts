@@ -21,6 +21,7 @@ import { sendEmail } from "./email";
 import { ICON_180, ICON_192, ICON_512 } from "./icons";
 import { appRoutes, isApp, registerPush, rememberTenant } from "./app";
 import { isDemo } from "./demo";
+import { demoChat, messageRoutes, ordersCard, tenantOrders } from "./messages";
 
 type Vars = { tenant: Tenant; property: Property; base: string };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -45,6 +46,17 @@ app.use("/t/:id/:sig/*", async (c, next) => {
   // The demo home saves and sends nothing: every form in it ends here instead.
   if (isDemo(tenant.id) && c.req.method === "POST") {
     const base = c.var.base;
+    if (/\/wo\/[^/]+$/.test(c.req.path)) {
+      return c.html(
+        endingPage(
+          base,
+          "Demo: message not sent",
+          "This is the demo home, so nothing was sent. For a real work order, the technician gets your message or visit time right away by email and sees it on their work order page.",
+          c.env,
+          html`<a class="btn primary" href="${base}/wo/demo">Back to the demo work order</a>`,
+        ),
+      );
+    }
     const workOrder = /\/report\/[^/]+$/.test(c.req.path);
     return c.html(
       endingPage(
@@ -62,7 +74,12 @@ app.use("/t/:id/:sig/*", async (c, next) => {
 });
 
 app.get("/t/:id/:sig", (c) => c.redirect(`${c.req.path}/`));
-app.get("/t/:id/:sig/", (c) => c.html(homePage(c.env, c.var.base, c.var.tenant, c.var.property, c.req.query("saved") === "insurance")));
+app.get("/t/:id/:sig/", async (c) => {
+  const { tenant, base } = c.var;
+  const zone = c.env.TIMEZONE || "America/New_York";
+  const orders = isDemo(tenant.id) ? [demoChat(new Date(), zone).summary] : await tenantOrders(c.env, tenant.id);
+  return c.html(homePage(c.env, base, tenant, c.var.property, c.req.query("saved") === "insurance", ordersCard(base, orders, zone)));
+});
 
 // The tenant's renters insurance end date. Rentec's API doesn't share it, so reminders follow this one.
 app.post("/t/:id/:sig/insurance", async (c) => {
@@ -242,18 +259,19 @@ app.post("/t/:id/:sig/report/:guide", async (c) => {
     }
   }
   await recordOutcome(c.env, tenant.id, ctx.guide?.id ?? "other", "work_order", ctx.walked?.history ?? [], workOrderId);
-  await c.env.DB.prepare(
+  const saved = await c.env.DB.prepare(
     `INSERT INTO work_orders (rentec_id, tenant_id, property_id, guide_id, title, description, contact_phone, contact_email, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
   )
     .bind(workOrderId || null, tenant.id, property.id, ctx.guide?.id ?? null, title, description, phone, email, new Date().toISOString())
-    .run();
+    .first<{ id: number }>();
   return c.html(
     endingPage(
       base,
       "Work order submitted",
-      "We've sent your request to F.I.R.M. with your photos and the checks you did. We'll contact you to schedule a visit, and you can follow it in the Tenant Portal.",
+      "We've sent your request to F.I.R.M. with your photos and the checks you did. Once a technician is assigned, they'll suggest a visit time and can message you on your work order page. You'll get a notice on your phone (or an email) when they do.",
       c.env,
+      saved ? html`<a class="btn primary" href="${base}/wo/${saved.id}">Open my work order</a>` : undefined,
     ),
   );
 });
@@ -340,6 +358,7 @@ app.route("/", dispatchRoutes);
 app.route("/", startRoutes);
 app.route("/", trackerRoutes);
 app.route("/", appRoutes);
+app.route("/", messageRoutes);
 
 
 async function runNightly(env: Env): Promise<void> {

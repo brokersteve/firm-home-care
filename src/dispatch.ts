@@ -9,6 +9,7 @@ import { layout } from "./pages";
 import { sendText, textSendTime, toE164 } from "./sms";
 import { getProperty, getTenant } from "./store";
 import { RentecClient } from "./rentec";
+import { adminChatCard, techLink, type ChatOrder } from "./messages";
 
 export interface Vendor {
   id: number;
@@ -45,7 +46,7 @@ const escape = (s: string) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0
 const linkify = (s: string) => escape(s).replace(/https?:\/\/[^\s<]+/g, (url) => `<a href="${url}">${url}</a>`);
 
 /** The text a vendor gets. Kept short; the email has everything. */
-export function vendorText(wo: WorkOrder, property: Property, tenant: Tenant | null, notes: string, env: Pick<Env, "COMPANY_NAME">): string {
+export function vendorText(wo: WorkOrder, property: Property, tenant: Tenant | null, notes: string, env: Pick<Env, "COMPANY_NAME">, link = ""): string {
   const who = tenant ? `${tenant.first_name} ${tenant.last_name}` : "Tenant";
   const parts = [
     `F.I.R.M. work order #${wo.id}: ${wo.title} at ${property.address}.`,
@@ -53,15 +54,18 @@ export function vendorText(wo: WorkOrder, property: Property, tenant: Tenant | n
     ...(notes ? [`Notes: ${notes.length > 200 ? `${notes.slice(0, 197)}...` : notes}`] : []),
     "Tenant or an adult they authorize must be home; don't enter if no one is there unless it's an emergency.",
     "Full details and photos are in your email.",
+    ...(link ? [`On my way, visit time and messages: ${link}`] : []),
   ];
   return parts.join(" ");
 }
 
 /** The email a vendor gets: F.I.R.M.'s notes first, then the tenant's request as filed in Rentec. */
-export function vendorEmailHtml(wo: WorkOrder, property: Property, vendor: Vendor, notes: string, env: Pick<Env, "COMPANY_NAME" | "EMERGENCY_PHONE">): string {
+export function vendorEmailHtml(wo: WorkOrder, property: Property, vendor: Vendor, notes: string, env: Pick<Env, "COMPANY_NAME" | "EMERGENCY_PHONE">, link = ""): string {
   return `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#222;max-width:640px">
 <p>Hi ${escape(vendor.name)},</p>
 <p>${escape(env.COMPANY_NAME)} is sending you this work order. Please contact the tenant to schedule a visit on a weekday between 8am and 5pm.</p>
+${link ? `<p style="background:#e8f0f6;padding:12px;border-radius:8px">On your phone, use this page to tell the tenant you're <strong>on your way</strong>, <strong>suggest or set the visit time</strong>, and <strong>message them</strong>. No app or password needed, and your phone number stays private.<br>
+<a href="${escape(link)}" style="display:inline-block;margin-top:8px;background:#1f5f8b;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:600">Open the work order page</a></p>` : ""}
 <table style="border-collapse:collapse;font-size:15px">
 <tr><td style="padding:2px 12px 2px 0;color:#666">Work order</td><td>#${wo.id}${wo.rentec_id ? ` (Rentec ${escape(wo.rentec_id)})` : ""}</td></tr>
 <tr><td style="padding:2px 12px 2px 0;color:#666">Property</td><td>${escape(property.address)}</td></tr>
@@ -95,7 +99,8 @@ export async function dispatchWorkOrder(env: Env, wo: WorkOrder, vendor: Vendor,
   const result: DispatchResult = { emailed: false, text: "none" };
 
   const subject = `F.I.R.M. work order #${wo.id}: ${wo.title} at ${property.address}`;
-  const body = vendorEmailHtml(wo, property, vendor, notes, env);
+  const link = await techLink(env, wo.id, vendor.id);
+  const body = vendorEmailHtml(wo, property, vendor, notes, env, link);
   if (vendor.email) {
     await sendEmail(env, vendor.email, subject, body);
     result.emailed = true;
@@ -103,7 +108,7 @@ export async function dispatchWorkOrder(env: Env, wo: WorkOrder, vendor: Vendor,
 
   const to = vendor.phone ? toE164(vendor.phone) : null;
   if (to) {
-    const textBody = vendorText(wo, property, tenant, notes, env);
+    const textBody = vendorText(wo, property, tenant, notes, env, link);
     const at = textSendTime(now, env.TIMEZONE);
     if (at.getTime() > now.getTime()) {
       await env.DB.prepare("INSERT INTO texts_outbox (work_order_id, to_phone, body, send_after) VALUES (?, ?, ?, ?)")
@@ -219,6 +224,7 @@ dispatchRoutes.get("/admin/workorders/:id", async (c) => {
   const list = await vendors(c.env, true);
   const sentTo = wo.vendor_id ? (await vendors(c.env, false)).find((v) => v.id === wo.vendor_id) : null;
   const status = c.req.query("sent");
+  const chat = await adminChatCard(c.env, wo as ChatOrder);
   return c.html(
     layout(
       `Work order #${wo.id}`,
@@ -244,6 +250,7 @@ ${sentTo ? html`<p>Last sent to <strong>${sentTo.name}</strong> on ${when(wo.sen
 <p class="quiet">They get an email right away and a text. Texts go out 8am to 9pm; at other times the text waits until 8am. You get a copy by email.</p></form>
 <div class="card"><h2>The tenant's request</h2><p>Phone: <a href="tel:${wo.contact_phone}">${wo.contact_phone}</a><br>Email: ${wo.contact_email}</p>
 <pre style="white-space:pre-wrap;font:inherit">${wo.description}</pre></div>
+${chat}
 <a class="quiet" href="/admin/workorders">Back to work orders</a>`,
       NEW_VENDOR_SCRIPT,
     ),

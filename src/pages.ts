@@ -116,7 +116,8 @@ ${saved ? html`<p class="quiet"><strong>Saved.</strong> Thanks!</p>` : ""}
 <a class="btn${urgent ? " primary" : ""}" href="${env.RESIDENT_CONNECT_URL}">Upload my policy</a></div>`;
 }
 
-export function homePage(env: Env, base: string, tenant: Tenant, property: Property, insuranceSaved = false): Html {
+/** orders: the "Your work orders" card (messages.ts), shown under "Something not working?". */
+export function homePage(env: Env, base: string, tenant: Tenant, property: Property, insuranceSaved = false, orders: Html | string = ""): Html {
   const filterList = filters(property.fields);
   return layout(
     "Home",
@@ -133,6 +134,7 @@ ${emergencyCard(env)}
 <p class="quiet">Before you submit a work order, let's check a few quick things. Many problems take two minutes to fix.</p>
 ${searchBox(base)}
 <a class="btn" href="${base}/help">See common problems</a></div>
+${orders}
 <div class="card"><h2>Emergency guide for your home</h2>${infoList(property, [
       ["Main water shutoff", "HC Water Shutoff"],
       ["Gas shutoff", "HC Gas Shutoff"],
