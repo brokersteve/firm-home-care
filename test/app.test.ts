@@ -86,6 +86,15 @@ describe("demo home pages", async () => {
     expect(page).toContain("16x25x1");
   });
 
+  it("fills in sample contact details on the work order form", async () => {
+    const link = await homeLink(env.APP_URL, env.LINK_SECRET, "demo");
+    const page = await (await worker.fetch(new Request(`${link}/report/other`), env, ctx)).text();
+    expect(page).toContain('value="704-555-0100"');
+    expect(page).toContain('value="demo@example.com"');
+    const home = await (await worker.fetch(new Request(`${link}/`), env, ctx)).text();
+    expect(home).toContain("Open the Tenant Portal");
+  });
+
   it("never files a work order", async () => {
     const link = await homeLink(env.APP_URL, env.LINK_SECRET, "demo");
     const res = await worker.fetch(new Request(`${link}/report/other`, { method: "POST", body: new FormData() }), env, ctx);

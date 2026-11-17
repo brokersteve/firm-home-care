@@ -114,7 +114,7 @@ export function renderEmailHtml(email: Email, links: { home: string; done?: stri
   return `<div style="font-family:system-ui,sans-serif;font-size:16px;line-height:1.5;color:#222;max-width:560px">
 ${email.lines.map((l) => `<p>${escape(l)}</p>`).join("\n")}
 <p>${links.done ? button(links.done, "Done", true) : ""}${links.insurance ? button(links.insurance, "Upload my policy", true) : ""}${button(`${links.home}/help`, "Something's wrong", false)}${button(links.home, "My Home Care page", false)}</p>
-<p style="font-size:13px;color:#666">Emergency? Call F.I.R.M. at ${escape(env.EMERGENCY_PHONE)}. For rent and repair requests, use Resident Connect.</p>
+<p style="font-size:13px;color:#666">Emergency? Call F.I.R.M. at ${escape(env.EMERGENCY_PHONE)}. For rent and your lease, use the Tenant Portal (Rentec Direct).</p>
 </div>`;
 }
 

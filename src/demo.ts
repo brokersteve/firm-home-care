@@ -12,8 +12,9 @@ export const DEMO_TENANT: Tenant = {
   property_id: DEMO_ID,
   first_name: "there",
   last_name: "(demo)",
-  email: null,
-  phone: null,
+  // Sample contact details, so the work order form shows them filled in.
+  email: "demo@example.com",
+  phone: "704-555-0100",
   move_in: null,
   move_out: null,
   insurance_expires: null,

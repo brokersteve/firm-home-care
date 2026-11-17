@@ -49,7 +49,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
-    <!-- Lets the "Open Resident Connect" button see whether Rentec's tenant app is installed. -->
+    <!-- Lets the "Open the Tenant Portal" button see whether Rentec's tenant app is installed. -->
     <queries>
         <package android:name="com.rentecdirect.app" />
     </queries>

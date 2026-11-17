@@ -112,7 +112,7 @@ ${saved ? html`<p class="quiet"><strong>Saved.</strong> Thanks!</p>` : ""}
 <form method="post" action="${base}/insurance"><label for="ins-end">Policy end date</label>
 <input type="date" id="ins-end" name="expires" value="${expires ?? ""}" required>
 <button class="btn">Save date</button></form>
-<p class="quiet">Your lease (8.1) requires at least $100,000 of personal liability coverage, with First Investor Realty &amp; Management, LLC listed as an additional insured or interested party. Upload proof in Resident Connect; no need to email it.</p>
+<p class="quiet">Your lease (8.1) requires at least $100,000 of personal liability coverage, with First Investor Realty &amp; Management, LLC listed as an additional insured or interested party. Upload proof in the Tenant Portal (Rentec Direct); no need to email it.</p>
 <a class="btn${urgent ? " primary" : ""}" href="${env.RESIDENT_CONNECT_URL}">Upload my policy</a></div>`;
 }
 
@@ -164,8 +164,8 @@ ${tenant.move_in && daysBetween(tenant.move_in, formatDay(new Date())) <= 30
 <li>Away more than 7 days? Tell us in writing first.</li>
 <li>Contact us through the tenant portal or email; phone or text only when it's urgent.</li>
 </ul></div>
-<div class="card"><h2>Rent and repairs</h2><p class="quiet">Pay rent and see your lease and work orders in Resident Connect.</p>
-<a class="btn" href="${env.RESIDENT_CONNECT_URL}">Open Resident Connect</a></div>
+<div class="card"><h2>Tenant Portal</h2><p class="quiet">Pay rent, see your lease and follow your work orders (Rentec Direct).</p>
+<a class="btn" href="${env.RESIDENT_CONNECT_URL}">Open the Tenant Portal</a></div>
 ${insuranceCard(env, base, tenant, insuranceSaved)}
 `,
     AUTOCOMPLETE + HOME_SCREEN_SCRIPT,

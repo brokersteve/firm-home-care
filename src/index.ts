@@ -152,12 +152,22 @@ function reportContext(c: Context<{ Bindings: Env; Variables: Vars }>, guideId: 
   return walked && walked.at === WORK_ORDER ? { guide, walked } : null;
 }
 
-app.get("/t/:id/:sig/report/:guide", (c) => {
+app.get("/t/:id/:sig/report/:guide", async (c) => {
   const raw = c.req.query("a") ?? "";
   const ctx = reportContext(c, c.req.param("guide"), raw);
   if (!ctx) return c.redirect(`${c.var.base}/help`);
-  return c.html(reportPage(c.var.base, c.env, ctx.guide, raw, ctx.walked, c.var.tenant));
+  return c.html(reportPage(c.var.base, c.env, ctx.guide, raw, ctx.walked, await withContact(c.env, c.var.tenant)));
 });
+
+/** The phone and email to fill in on the work order form: Rentec's, or else what the tenant typed last time. */
+async function withContact(env: Env, tenant: Tenant): Promise<Tenant> {
+  if (tenant.phone && tenant.email) return tenant;
+  const last = await env.DB.prepare("SELECT contact_phone, contact_email FROM work_orders WHERE tenant_id = ? ORDER BY id DESC LIMIT 1")
+    .bind(tenant.id)
+    .first<{ contact_phone: string | null; contact_email: string | null }>()
+    .catch(() => null);
+  return { ...tenant, phone: tenant.phone || last?.contact_phone || null, email: tenant.email || last?.contact_email || null };
+}
 
 const MAX_PHOTOS = 5;
 
@@ -214,10 +224,10 @@ app.post("/t/:id/:sig/report/:guide", async (c) => {
     return c.html(
       endingPage(
         base,
-        "Please submit it in Resident Connect",
-        "We couldn't file the work order automatically. Please submit it in Resident Connect and mention the checks you've done.",
+        "Please submit it in the Tenant Portal",
+        "We couldn't file the work order automatically. Please submit it in the Tenant Portal (Rentec Direct) and mention the checks you've done.",
         c.env,
-        html`<a class="btn primary" href="${c.env.RESIDENT_CONNECT_URL}">Open Resident Connect</a>`,
+        html`<a class="btn primary" href="${c.env.RESIDENT_CONNECT_URL}">Open the Tenant Portal</a>`,
       ),
       502,
     );
@@ -242,7 +252,7 @@ app.post("/t/:id/:sig/report/:guide", async (c) => {
     endingPage(
       base,
       "Work order submitted",
-      "We've sent your request to F.I.R.M. with your photos and the checks you did. We'll contact you to schedule a visit, and you can follow it in Resident Connect.",
+      "We've sent your request to F.I.R.M. with your photos and the checks you did. We'll contact you to schedule a visit, and you can follow it in the Tenant Portal.",
       c.env,
     ),
   );
