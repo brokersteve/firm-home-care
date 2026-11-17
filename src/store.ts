@@ -1,6 +1,7 @@
 import type { Env, Property, Tenant } from "./env";
 import { FIELDS } from "./fields";
 import { RentecClient } from "./rentec";
+import { DEMO_PROPERTY, DEMO_TENANT, isDemo } from "./demo";
 
 interface PropertyRow {
   id: string;
@@ -14,10 +15,12 @@ function toProperty(row: PropertyRow): Property {
 }
 
 export async function getTenant(env: Env, id: string): Promise<Tenant | null> {
+  if (isDemo(id)) return DEMO_TENANT;
   return env.DB.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first<Tenant>();
 }
 
 export async function getProperty(env: Env, id: string): Promise<Property | null> {
+  if (isDemo(id)) return DEMO_PROPERTY;
   const row = await env.DB.prepare("SELECT * FROM properties WHERE id = ?").bind(id).first<PropertyRow>();
   return row ? toProperty(row) : null;
 }

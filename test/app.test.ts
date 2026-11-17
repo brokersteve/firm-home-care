@@ -54,3 +54,41 @@ describe("Android test download", () => {
     expect(res.headers.get("content-type")).toBe("application/vnd.android.package-archive");
   });
 });
+
+describe("demo home", () => {
+  const env = { APP_URL: "https://x.test", LINK_SECRET: "s" };
+
+  it("signs the phone in to the demo home without a code", async () => {
+    const res = await appRoutes.request("/app/demo", {}, env);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toMatch(/^https:\/\/x\.test\/t\/demo\/[^/]+\/$/);
+    expect(res.headers.get("set-cookie")).toContain("fhc_app=demo.");
+  });
+
+  it("is offered on the sign-in page", async () => {
+    const html = await (await appRoutes.request("/app", {}, { ...env, EMERGENCY_PHONE: "704-430-6193" })).text();
+    expect(html).toContain('href="/app/demo"');
+  });
+});
+
+describe("demo home pages", async () => {
+  const worker = (await import("../src/index")).default as any;
+  const { homeLink } = await import("../src/links");
+  const env = { APP_URL: "https://x.test", LINK_SECRET: "s", EMERGENCY_PHONE: "704-430-6193" };
+  const ctx = { waitUntil() {}, passThroughOnException() {} };
+
+  it("shows the sample home with a demo note", async () => {
+    const link = await homeLink(env.APP_URL, env.LINK_SECRET, "demo");
+    const res = await worker.fetch(new Request(`${link}/`), env, ctx);
+    expect(res.status).toBe(200);
+    const page = await res.text();
+    expect(page).toContain("This is the demo");
+    expect(page).toContain("16x25x1");
+  });
+
+  it("never files a work order", async () => {
+    const link = await homeLink(env.APP_URL, env.LINK_SECRET, "demo");
+    const res = await worker.fetch(new Request(`${link}/report/other`, { method: "POST", body: new FormData() }), env, ctx);
+    expect(await res.text()).toContain("Demo: work order not sent");
+  });
+});

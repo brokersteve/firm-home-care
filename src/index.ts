@@ -20,6 +20,7 @@ import { trackerEmail, trackerRoutes } from "./tracker";
 import { sendEmail } from "./email";
 import { ICON_180, ICON_192, ICON_512 } from "./icons";
 import { appRoutes, isApp, registerPush, rememberTenant } from "./app";
+import { isDemo } from "./demo";
 
 type Vars = { tenant: Tenant; property: Property; base: string };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -41,6 +42,22 @@ app.use("/t/:id/:sig/*", async (c, next) => {
   c.set("base", `/t/${encodeURIComponent(id)}/${sig}`);
   // A Home Care link opened in the phone app signs that phone in, so the app opens here next time.
   if (isApp(c)) await rememberTenant(c, tenant.id);
+  // The demo home saves and sends nothing: every form in it ends here instead.
+  if (isDemo(tenant.id) && c.req.method === "POST") {
+    const base = c.var.base;
+    const workOrder = /\/report\/[^/]+$/.test(c.req.path);
+    return c.html(
+      endingPage(
+        base,
+        workOrder ? "Demo: work order not sent" : "Demo: nothing saved",
+        workOrder
+          ? "This is the demo home, so nothing was sent. For a real tenant, this files a work order in Rentec with their photos and the checks they did, and F.I.R.M. contacts them to schedule a visit."
+          : "This is the demo home, so nothing was saved. For a real tenant, this is saved to their Home Care page.",
+        c.env,
+        html`<a class="btn primary" href="${base}/">Back to the demo home</a>`,
+      ),
+    );
+  }
   await next();
 });
 

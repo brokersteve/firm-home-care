@@ -121,6 +121,7 @@ export function homePage(env: Env, base: string, tenant: Tenant, property: Prope
   return layout(
     "Home",
     html`<h1>Hi ${tenant.first_name}</h1><p class="quiet">${property.address}</p>
+${tenant.id === "demo" ? html`<div class="card note"><h2>This is the demo</h2><p>A made-up home with sample details, so you can look around. Nothing you do here is saved or sent to F.I.R.M.</p><a class="btn" href="/app/signout">Leave the demo</a></div>` : ""}
 ${emergencyCard(env)}
 <div class="card note" id="a2hs"><h2>Put FIRM on your home screen</h2>
 <p>Do this once and the FIRM icon opens this page in one tap, even years from now. No download or password.</p>

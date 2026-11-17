@@ -16,6 +16,7 @@ import { sendEmail } from "./email";
 import { sendText, toE164 } from "./sms";
 import { findTenant } from "./start";
 import { getTenant } from "./store";
+import { DEMO_ID } from "./demo";
 
 /** The app adds this to its browser identity (capacitor.config.ts appendUserAgent). */
 export const APP_AGENT = "FIRMApp";
@@ -77,7 +78,8 @@ ${notice ? html`<p class="card note">${notice}</p>` : ""}
 <p class="quiet">For F.I.R.M. tenants. Enter the cell number or email F.I.R.M. has for you, and we'll send a 6-digit code. No password.</p>
 <form method="post" action="/app/code"><label for="who">Cell number or email</label>
 <input type="text" id="who" name="who" required autocomplete="email" inputmode="email" placeholder="704-555-0100 or you@example.com">
-<button class="btn primary">Send my code</button></form></div>
+<button class="btn primary">Send my code</button></form>
+<p class="quiet">Just looking? <a href="/app/demo">Try the demo home</a>: sample details, nothing is sent.</p></div>
 <div class="card"><h2>Water leaking?</h2><p>Turn the small valve under the sink or behind the toilet clockwise. If water is spraying or spreading, shut off the main water to the home, then call.</p></div>
 ${env.WEBSITE_URL
   ? html`<div class="card"><h2>Looking for a home?</h2><p class="quiet">See F.I.R.M.'s homes for rent in the Charlotte area, or learn about us.</p>
@@ -182,6 +184,12 @@ appRoutes.post("/app/verify", async (c) => {
   await c.env.DB.prepare("UPDATE app_codes SET used_at = ? WHERE id = ?").bind(new Date().toISOString(), row.id).run();
   await rememberTenant(c, match.tenant.id);
   return c.redirect(`${await homeLink(c.env.APP_URL, c.env.LINK_SECRET, match.tenant.id)}/`, 303);
+});
+
+/** "Try the demo": signs this phone in to the made-up demo home (see demo.ts). */
+appRoutes.get("/app/demo", async (c) => {
+  await rememberTenant(c, DEMO_ID);
+  return c.redirect(`${await homeLink(c.env.APP_URL, c.env.LINK_SECRET, DEMO_ID)}/`);
 });
 
 appRoutes.get("/app/signout", (c) => {
