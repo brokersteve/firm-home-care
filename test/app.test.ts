@@ -68,6 +68,8 @@ describe("demo home", () => {
   it("is offered on the sign-in page", async () => {
     const html = await (await appRoutes.request("/app", {}, { ...env, EMERGENCY_PHONE: "704-430-6193" })).text();
     expect(html).toContain('href="/app/demo"');
+    expect(html).toContain("Use the email or phone number on file with FIRM. If your code doesn't arrive, call us at");
+    expect(html).toContain('href="tel:704-430-6193"');
   });
 });
 

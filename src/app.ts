@@ -79,6 +79,7 @@ ${notice ? html`<p class="card note">${notice}</p>` : ""}
 <form method="post" action="/app/code"><label for="who">Cell number or email</label>
 <input type="text" id="who" name="who" required autocomplete="email" inputmode="email" placeholder="704-555-0100 or you@example.com">
 <button class="btn primary">Send my code</button></form>
+<p class="quiet">Use the email or phone number on file with FIRM. If your code doesn't arrive, call us at <a href="tel:${env.EMERGENCY_PHONE}">${env.EMERGENCY_PHONE}</a>.</p>
 <p class="quiet">Just looking? <a href="/app/demo">Try the demo home</a>: sample details, nothing is sent.</p></div>
 <div class="card"><h2>Water leaking?</h2><p>Turn the small valve under the sink or behind the toilet clockwise. If water is spraying or spreading, shut off the main water to the home, then call.</p></div>
 ${env.WEBSITE_URL
